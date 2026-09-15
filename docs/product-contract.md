@@ -16,9 +16,13 @@ boundary.
 ## Source and failure behavior
 
 The local Codex app-server method `account/rateLimits/read` supplies usage. The
-`codex` bucket is preferred when multiple buckets exist. Remaining percentage
-is `100 - usedPercent`; the reset-credit count is used only when the response
-contains an integer `availableCount`.
+`codex` bucket is preferred when multiple buckets exist. Within that bucket,
+the host selects the window whose reported duration is exactly seven days
+(`10080` minutes), whether Codex calls it `primary` or `secondary`. It fails
+closed if no weekly window exists rather than putting a weekly label on a
+shorter allowance. Remaining percentage is `100 - usedPercent`; the
+reset-credit count is used only when the response contains an integer
+`availableCount`.
 
 The parser fails closed on unknown or malformed responses. It does not invent
 zero usage, a reset time, or a credit count. When an update fails, the e-paper

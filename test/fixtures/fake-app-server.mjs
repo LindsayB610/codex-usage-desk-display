@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { createInterface } from 'node:readline';
 
 const hang = process.argv.includes('--hang');
@@ -11,7 +12,7 @@ lines.on('line', line => {
       id: message.id,
       result: {
         ordinaryUsageAllowed: true,
-        rateLimits: { primary: { usedPercent: 56, resetsAt: 2000 } },
+        rateLimits: { primary: { usedPercent: 56, resetsAt: 2000, windowDurationMins: 10080 } },
         rateLimitResetCredits: { availableCount: 2, credits: null },
       },
     })}\n`);

@@ -10,7 +10,13 @@ import { readConfig, runService } from './service.mjs';
 const DEFAULT_CODEX = '/Applications/ChatGPT.app/Contents/Resources/codex';
 
 function safeError(error) {
-  return { error: { code: /^[A-Z0-9_]{1,64}$/.test(error.code ?? '') ? error.code : 'CODEX_USAGE_DISPLAY_FAILED' } };
+  const value = {
+    code: /^[A-Z0-9_]{1,64}$/.test(error.code ?? '') ? error.code : 'CODEX_USAGE_DISPLAY_FAILED',
+  };
+  if (process.env.CODEX_USAGE_DISPLAY_DEBUG === '1') {
+    value.detail = String(error.message ?? error).slice(0, 4096);
+  }
+  return { error: value };
 }
 
 async function snapshot(codexPath = process.env.CODEX_BIN || DEFAULT_CODEX) {
@@ -47,8 +53,10 @@ export async function main(argv = process.argv.slice(2)) {
 }
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
-  main().catch(error => {
+  try {
+    await main();
+  } catch (error) {
     process.stderr.write(`${JSON.stringify(safeError(error))}\n`);
     process.exitCode = 1;
-  });
+  }
 }

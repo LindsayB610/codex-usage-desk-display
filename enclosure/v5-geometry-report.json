@@ -1,0 +1,389 @@
+{
+  "meshes": {
+    "frame": {
+      "vertices": 975,
+      "triangles": 1950,
+      "edges": 2925,
+      "components": 1,
+      "bounds_min_mm": [
+        -35.725,
+        -32.4928,
+        0.0
+      ],
+      "bounds_max_mm": [
+        35.725,
+        22.2,
+        14.71
+      ],
+      "dimensions_mm": [
+        71.45,
+        54.6928,
+        14.71
+      ],
+      "surface_area_mm2": 11761.9228,
+      "volume_mm3": 8902.997232,
+      "centroid_mm": [
+        -0.309438,
+        -3.446645,
+        4.875125
+      ]
+    },
+    "backplate": {
+      "vertices": 2263,
+      "triangles": 4522,
+      "edges": 6783,
+      "components": 1,
+      "bounds_min_mm": [
+        -34.275,
+        -20.75,
+        0.0
+      ],
+      "bounds_max_mm": [
+        35.525,
+        20.75,
+        4.25
+      ],
+      "dimensions_mm": [
+        69.8,
+        41.5,
+        4.25
+      ],
+      "surface_area_mm2": 6234.448,
+      "volume_mm3": 4914.331261,
+      "centroid_mm": [
+        0.0802,
+        0.689301,
+        0.948508
+      ]
+    },
+    "leg": {
+      "vertices": 566,
+      "triangles": 1128,
+      "edges": 1692,
+      "components": 1,
+      "bounds_min_mm": [
+        -17.0,
+        -30.6264,
+        0.0
+      ],
+      "bounds_max_mm": [
+        17.0,
+        3.5105,
+        12.8816
+      ],
+      "dimensions_mm": [
+        34.0,
+        34.1369,
+        12.8816
+      ],
+      "surface_area_mm2": 2587.0168,
+      "volume_mm3": 2966.933558,
+      "centroid_mm": [
+        -0.0,
+        -13.451951,
+        2.196826
+      ]
+    },
+    "fit_gauge": {
+      "vertices": 128,
+      "triangles": 256,
+      "edges": 384,
+      "components": 1,
+      "bounds_min_mm": [
+        -28.275,
+        -15.855,
+        0.0
+      ],
+      "bounds_max_mm": [
+        28.275,
+        15.855,
+        1.2
+      ],
+      "dimensions_mm": [
+        56.55,
+        31.71,
+        1.2
+      ],
+      "surface_area_mm2": 1665.6139,
+      "volume_mm3": 769.457993,
+      "centroid_mm": [
+        0.0,
+        -0.0,
+        0.6
+      ]
+    },
+    "magnet_gauge": {
+      "vertices": 232,
+      "triangles": 460,
+      "edges": 690,
+      "components": 1,
+      "bounds_min_mm": [
+        -5.0,
+        -5.0,
+        0.0
+      ],
+      "bounds_max_mm": [
+        5.0,
+        5.0,
+        1.6
+      ],
+      "dimensions_mm": [
+        10.0,
+        10.0,
+        1.6
+      ],
+      "surface_area_mm2": 269.4055,
+      "volume_mm3": 150.348098,
+      "centroid_mm": [
+        0.0,
+        -0.0,
+        0.818147
+      ]
+    }
+  },
+  "bambu_studio_mesh_info": {
+    "frame": {
+      "manifold": true,
+      "parts": 1,
+      "open_edges": 0,
+      "facets_after_import": 1950,
+      "volume_mm3": 8903.02832
+    },
+    "backplate": {
+      "manifold": true,
+      "parts": 1,
+      "open_edges": 0,
+      "facets_after_import": 4522,
+      "volume_mm3": 4914.319824
+    },
+    "leg": {
+      "manifold": true,
+      "parts": 1,
+      "open_edges": 0,
+      "facets_after_import": 1128,
+      "volume_mm3": 2966.931396
+    },
+    "fit_gauge": {
+      "manifold": true,
+      "parts": 1,
+      "open_edges": 0,
+      "facets_after_import": 256,
+      "volume_mm3": 769.458557
+    },
+    "magnet_gauge": {
+      "manifold": true,
+      "parts": 1,
+      "open_edges": 0,
+      "facets_after_import": 460,
+      "volume_mm3": 150.348038
+    }
+  },
+  "intersection_volumes_mm3": {
+    "intersection_frame_backplate": 0.0,
+    "intersection_frame_backplate_path": 0.0,
+    "intersection_frame_leg": 0.0,
+    "intersection_frame_device": 0.0,
+    "intersection_frame_device_path": 0.0,
+    "intersection_backplate_leg": 0.0,
+    "intersection_backplate_device": 0.0,
+    "intersection_leg_device": 0.0
+  },
+  "desktop_mesh_audit": {
+    "rotation_x_degrees": 120.0,
+    "part_min_z_before_floor_translation_mm": {
+      "frame": -28.1396,
+      "backplate": -25.405,
+      "leg": -28.1396,
+      "device": -20.2382
+    },
+    "frame_leg_contact_plane_difference_mm": 0.0,
+    "front_foot_flat_contact_area_mm2": 271.77,
+    "rear_leg_level_contact_edge_length_mm": 24.8,
+    "rear_leg_flat_contact_area_mm2": 110.949,
+    "rear_leg_contact_segments_x_mm": [
+      [
+        -15.9,
+        -3.5
+      ],
+      [
+        3.5,
+        15.9
+      ]
+    ],
+    "rear_leg_contact_y_span_mm": 4.473731,
+    "support_polygon_xy_mm": [
+      [
+        -24.275,
+        -0.739
+      ],
+      [
+        -15.9,
+        -35.961
+      ],
+      [
+        15.9,
+        -35.961
+      ],
+      [
+        24.275,
+        -0.739
+      ],
+      [
+        24.275,
+        16.246
+      ],
+      [
+        -24.275,
+        16.246
+      ]
+    ],
+    "estimated_printed_part_mass_g": 20.812,
+    "stability_by_assumed_device_mass": {
+      "5g": {
+        "projected_center_xy_mm": [
+          0.395,
+          -8.571
+        ],
+        "inside_support_polygon": true,
+        "nearest_tipping_edge_mm": 21.421
+      },
+      "10g": {
+        "projected_center_xy_mm": [
+          0.757,
+          -8.213
+        ],
+        "inside_support_polygon": true,
+        "nearest_tipping_edge_mm": 21.151
+      },
+      "20g": {
+        "projected_center_xy_mm": [
+          1.215,
+          -7.762
+        ],
+        "inside_support_polygon": true,
+        "nearest_tipping_edge_mm": 20.81
+      },
+      "30g": {
+        "projected_center_xy_mm": [
+          1.492,
+          -7.488
+        ],
+        "inside_support_polygon": true,
+        "nearest_tipping_edge_mm": 20.604
+      }
+    }
+  },
+  "derived": {
+    "predicted_screen_lean_degrees": 30.0,
+    "predicted_screen_angle_from_desktop_degrees": 60.0,
+    "measured_maximum_device_depth_mm": 11.51,
+    "collision_proxy_depth_mm": 11.51,
+    "collision_proxy_to_cover_clearance_mm": 0.0,
+    "nominal_rear_stop_clearance_mm": 0.0,
+    "delivered_device_to_cover_gap_mm": 0.0,
+    "enclosure_total_depth_mm": 14.71,
+    "measured_device_height_mm": 31.46,
+    "measured_cabled_height_mm": 38.03,
+    "measured_cable_downward_extension_mm": 6.57,
+    "measured_cable_rear_extent_mm": 10.67,
+    "measured_cable_width_mm": 9.45,
+    "predicted_cable_desktop_clearance_mm": 2.692,
+    "foot_contact_plane_lean_degrees": 30.0,
+    "foot_front_drop_mm": 10.293,
+    "foot_rear_drop_mm": 1.8,
+    "rear_guide_clearance_mm_per_edge": 0.25,
+    "paired_magnet_locations": 4,
+    "physical_magnets_required": 8,
+    "magnet_positions_xy_mm": [
+      [
+        -30.0,
+        18.35
+      ],
+      [
+        30.0,
+        18.35
+      ],
+      [
+        -30.0,
+        -18.35
+      ],
+      [
+        30.0,
+        -18.35
+      ]
+    ],
+    "magnet_nominal_mm": [
+      3.0,
+      1.0
+    ],
+    "magnet_pocket_diameter_mm": 3.35,
+    "magnet_pocket_depth_mm": 0.94,
+    "backplate_preload_mm": 0.16,
+    "backplate_total_thickness_mm": 1.76,
+    "backplate_magnet_pocket_depth_mm": 1.0999999999999999,
+    "selected_magnets": "TRYMAG mixed-set 3 x 1 mm discs",
+    "incompatible_magnets": "VSKIZ 6 x 3 mm discs",
+    "magnet_radial_glue_clearance_mm": 0.175,
+    "magnet_support_clearance_from_measured_device_mm": 0.62,
+    "magnet_support_clearance_from_insertion_envelope_mm": 0.55,
+    "backplate_material_beyond_magnet_pocket_mm": 0.725,
+    "frame_magnet_boss_radial_wall_mm": 0.325,
+    "backplate_magnet_pocket_floor_mm": 0.66,
+    "paired_magnet_face_separation_at_rear_stop_mm": 0.04,
+    "lower_right_magnet_support_to_usb_head_clearance_mm": 20.65,
+    "leg_detent_preclick_interference_mm_per_side": 0.1,
+    "leg_detent_pocket_radial_clearance_mm": 0.06
+  },
+  "checks": {
+    "openscad_certifies_every_nonempty_export_manifold_noerror": true,
+    "every_export_is_one_connected_component": true,
+    "bambu_imports_every_mesh_as_one_part": true,
+    "bambu_reports_every_mesh_manifold": true,
+    "bambu_reports_zero_open_edges_for_every_mesh": true,
+    "all_print_parts_touch_build_plate": true,
+    "actual_frame_and_leg_meshes_share_desktop_contact_plane": true,
+    "front_feet_have_at_least_250_mm2_flat_desktop_contact": true,
+    "rear_leg_has_at_least_24_mm_total_contact_width": true,
+    "rear_leg_has_at_least_90_mm2_flat_desktop_contact": true,
+    "actual_backplate_and_device_meshes_clear_desktop": true,
+    "support_footprint_has_at_least_four_convex_hull_points": true,
+    "center_of_mass_stays_inside_support_for_5_to_30g_device": true,
+    "center_of_mass_has_at_least_5mm_tipping_margin": true,
+    "frame_width_is_71_45_mm": true,
+    "front_frame_height_is_44_40_mm": true,
+    "backplate_matches_magnetic_recess_envelope": true,
+    "assembly_has_no_solid_intersections": true,
+    "straight_rear_cover_path_has_no_solid_intersection": true,
+    "straight_device_loading_path_has_no_solid_intersection": true,
+    "rear_guide_clearance_is_0_25_mm_per_edge": true,
+    "closure_uses_four_corner_paired_magnet_locations": true,
+    "magnet_pocket_has_0_175_mm_radial_glue_clearance": true,
+    "frame_magnet_stands_0_06_mm_proud": true,
+    "backplate_magnet_is_recessed_0_10_mm": true,
+    "selected_trymag_3x1_discs_fit_frame_and_backplate_pockets": true,
+    "vskiz_6x3_discs_are_rejected_as_too_large": true,
+    "all_magnet_supports_clear_measured_device_by_at_least_0_60_mm": true,
+    "device_insertion_envelope_clears_magnet_supports_by_0_50_mm": true,
+    "backplate_has_at_least_0_70_mm_beyond_each_magnet_pocket": true,
+    "frame_magnet_boss_has_at_least_0_30_mm_radial_wall": true,
+    "backplate_magnet_pocket_has_at_least_0_50_mm_floor": true,
+    "paired_magnets_have_only_0_04_mm_nominal_separation_at_rear_stop": true,
+    "lower_right_magnet_support_clears_usb_head_by_20_mm": true,
+    "device_xy_clearance_is_0_30_mm_per_edge": true,
+    "collision_proxy_uses_measured_11_51_mm_depth": true,
+    "collision_proxy_meets_nominal_cover_plane": true,
+    "delivered_device_has_zero_nominal_rear_stop_gap": true,
+    "usb_pocket_has_at_least_2_75_mm_clearance_per_plug_side": true,
+    "measured_cable_clears_desktop_by_at_least_2_60_mm": true,
+    "rear_leg_cable_tunnel_is_6_00_mm_high": true,
+    "leg_tongue_clearance_is_0_20_mm_per_side": true,
+    "leg_neck_clears_capture_lips_by_0_30_mm_per_side": true,
+    "leg_stop_has_1_10_mm_tongue_wing_per_side": true,
+    "leg_detent_has_0_10_mm_preclick_interference_per_side": true,
+    "leg_detent_has_0_06_mm_radial_pocket_clearance": true,
+    "closure_has_no_printed_flexure": true,
+    "rear_foot_remains_below_shell_bottom": true,
+    "foot_contact_plane_is_30_degrees_plus_or_minus_0_05": true,
+    "predicted_screen_lean_is_30_degrees_plus_or_minus_0_10": true
+  }
+}

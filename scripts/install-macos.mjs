@@ -29,7 +29,10 @@ const codexPath = process.env.CODEX_BIN
 if (!path.isAbsolute(codexPath) || !fs.existsSync(codexPath)) {
   throw new Error('Could not find Codex. Set CODEX_BIN to its absolute path.');
 }
-const appServerCheck = spawnSync(codexPath, ['app-server', '--help'], { encoding: 'utf8' });
+const appServerCheck = spawnSync(codexPath, ['app-server', '--help'], {
+  encoding: 'utf8',
+  timeout: 10000,
+});
 if (appServerCheck.status !== 0) throw new Error('This Codex build does not provide app-server.');
 
 const python = executable('python3');
@@ -67,10 +70,13 @@ if (!replace && (fs.existsSync(configPath) || fs.existsSync(plistPath))) {
 
 fs.mkdirSync(state, { recursive: true, mode: 0o700 });
 fs.mkdirSync(launchAgents, { recursive: true });
+fs.chmodSync(state, 0o700);
 execFileSync(python, ['-m', 'venv', path.join(repository, '.venv')], { stdio: 'inherit' });
 execFileSync(venvPython, ['-m', 'pip', 'install', '-r', path.join(repository, 'requirements.txt')], { stdio: 'inherit' });
 fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
 fs.writeFileSync(plistPath, plist, { mode: 0o600 });
+fs.chmodSync(configPath, 0o600);
+fs.chmodSync(plistPath, 0o600);
 
 const domain = `gui/${process.getuid()}`;
 spawnSync('/bin/launchctl', ['bootout', `${domain}/${label}`], { stdio: 'ignore' });

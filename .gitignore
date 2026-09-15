@@ -5,6 +5,8 @@ config.json
 .venv/
 __pycache__/
 *.pyc
+result.json
+*.orig
 
 # Downloaded from Elecrow by firmware/prepare_firmware.py because the upstream
 # repository does not currently declare a redistribution license.

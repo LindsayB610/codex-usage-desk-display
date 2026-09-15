@@ -21,6 +21,16 @@ export function selectCodexSnapshot(response) {
   fail('CODEX_USAGE_UNAVAILABLE');
 }
 
+export function selectWeeklyWindow(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) fail('CODEX_USAGE_UNAVAILABLE');
+  const windows = [snapshot.primary, snapshot.secondary].filter(
+    value => value && typeof value === 'object' && !Array.isArray(value),
+  );
+  const weekly = windows.find(value => value.windowDurationMins === 7 * 24 * 60);
+  if (!weekly) fail('CODEX_WEEKLY_USAGE_UNAVAILABLE');
+  return weekly;
+}
+
 export function formatCountdown(nowEpochSeconds, resetEpochSeconds) {
   if (!Number.isInteger(resetEpochSeconds) || resetEpochSeconds < 0) return 'UNKNOWN';
   const seconds = Math.max(0, resetEpochSeconds - nowEpochSeconds);
@@ -61,8 +71,7 @@ export function buildDisplayMessage(response, {
 } = {}) {
   if (!Number.isInteger(nowEpochSeconds) || nowEpochSeconds < 0) fail('INVALID_CURRENT_TIME');
   const snapshot = selectCodexSnapshot(response);
-  const window = snapshot.primary;
-  if (!window || typeof window !== 'object') fail('CODEX_USAGE_UNAVAILABLE');
+  const window = selectWeeklyWindow(snapshot);
   const usedPercent = clampPercent(window.usedPercent);
   const resetAt = Number.isInteger(window.resetsAt) && window.resetsAt >= 0 ? window.resetsAt : null;
   const resetCredits = Number.isInteger(response.rateLimitResetCredits?.availableCount)

@@ -78,7 +78,7 @@ def main() -> None:
         (sketch_dir / name).write_bytes(data)
 
     subprocess.run(
-        ["patch", "-p1", "--batch", "--forward", "-i", str(patch_path)],
+        ["patch", "-p1", "--batch", "--forward", "-V", "never", "-i", str(patch_path)],
         cwd=sketch_dir,
         check=True,
     )

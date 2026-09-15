@@ -1,19 +1,36 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildDisplayMessage, formatCountdown, formatResetAt, formatUpdatedAt, selectCodexSnapshot } from '../core.mjs';
+import {
+  buildDisplayMessage, formatCountdown, formatResetAt, formatUpdatedAt,
+  selectCodexSnapshot, selectWeeklyWindow,
+} from '../core.mjs';
 
 const response = {
   ordinaryUsageAllowed: true,
-  rateLimits: { primary: { usedPercent: 99, resetsAt: 2000 } },
+  rateLimits: { primary: { usedPercent: 99, resetsAt: 2000, windowDurationMins: 10080 } },
   rateLimitsByLimitId: {
-    codex_other: { limitId: 'codex_other', primary: { usedPercent: 2, resetsAt: 3000 } },
-    codex: { limitId: 'codex', primary: { usedPercent: 56, resetsAt: 1789816511 } },
+    codex_other: { limitId: 'codex_other', primary: { usedPercent: 2, resetsAt: 3000, windowDurationMins: 300 } },
+    codex: { limitId: 'codex', primary: { usedPercent: 56, resetsAt: 1789816511, windowDurationMins: 10080 } },
   },
   rateLimitResetCredits: { availableCount: 2, credits: [] },
 };
 
 test('prefers the exact codex bucket in a multi-bucket response', () => {
   assert.equal(selectCodexSnapshot(response).limitId, 'codex');
+});
+
+test('selects the seven-day window whether Codex returns it as primary or secondary', () => {
+  assert.equal(selectWeeklyWindow(response.rateLimitsByLimitId.codex).usedPercent, 56);
+  assert.equal(selectWeeklyWindow({
+    primary: { usedPercent: 5, resetsAt: 2100, windowDurationMins: 300 },
+    secondary: { usedPercent: 57, resetsAt: 3100, windowDurationMins: 10080 },
+  }).usedPercent, 57);
+});
+
+test('fails closed rather than labeling a non-weekly window as weekly', () => {
+  assert.throws(() => selectWeeklyWindow({
+    primary: { usedPercent: 5, resetsAt: 2100, windowDurationMins: 300 },
+  }), { code: 'CODEX_WEEKLY_USAGE_UNAVAILABLE' });
 });
 
 test('builds the privacy-minimized landscape message', () => {
@@ -59,5 +76,5 @@ test('last refresh uses Pacific 12-hour time', () => {
 });
 
 test('missing Codex usage fails instead of inventing zero', () => {
-  assert.throws(() => buildDisplayMessage({ rateLimits: { primary: null } }), { code: 'CODEX_USAGE_UNAVAILABLE' });
+  assert.throws(() => buildDisplayMessage({ rateLimits: { primary: null } }), { code: 'CODEX_WEEKLY_USAGE_UNAVAILABLE' });
 });

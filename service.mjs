@@ -75,6 +75,14 @@ export async function pollOnce({ client, transport, config, nowEpochSeconds = Ma
   return { message, delivery };
 }
 
+export function nextDeliveryTimestamps(previous, generatedAt, status) {
+  const sent = status === 'written' || status === 'displayed';
+  return Object.freeze({
+    lastSentSnapshotAt: sent ? generatedAt : previous.lastSentSnapshotAt,
+    lastGoodSnapshotAt: status === 'displayed' ? generatedAt : previous.lastGoodSnapshotAt,
+  });
+}
+
 export async function runService(config, { signal = null } = {}) {
   const value = validateConfig(config);
   let client = new CodexAppServerClient({ command: value.codexPath });
@@ -86,6 +94,7 @@ export async function runService(config, { signal = null } = {}) {
         connectDelayMs: value.connectDelayMs,
       });
   let stopped = signal?.aborted ?? false;
+  let lastSentSnapshotAt = null;
   let lastGoodSnapshotAt = null;
   const stop = () => { stopped = true; };
   signal?.addEventListener('abort', stop, { once: true });
@@ -94,12 +103,17 @@ export async function runService(config, { signal = null } = {}) {
       const attemptedAt = Math.floor(Date.now() / 1000);
       try {
         const result = await pollOnce({ client, transport, config: value, nowEpochSeconds: attemptedAt });
-        lastGoodSnapshotAt = result.message.generatedAt;
+        ({ lastSentSnapshotAt, lastGoodSnapshotAt } = nextDeliveryTimestamps(
+          { lastSentSnapshotAt, lastGoodSnapshotAt },
+          result.message.generatedAt,
+          result.delivery.status,
+        ));
         await writeHealth(value.healthPath, {
           schemaVersion: 1,
           attemptedAt,
           status: result.delivery.status,
           devicePath: result.delivery.devicePath ?? null,
+          lastSentSnapshotAt,
           lastGoodSnapshotAt,
           error: null,
         });
@@ -111,6 +125,7 @@ export async function runService(config, { signal = null } = {}) {
           attemptedAt,
           status: 'error',
           devicePath: null,
+          lastSentSnapshotAt,
           lastGoodSnapshotAt,
           error: { code: /^[A-Z0-9_]{1,64}$/.test(error.code ?? '') ? error.code : 'SERVICE_FAILED' },
         });

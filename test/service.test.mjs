@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { pollOnce, validateConfig } from '../service.mjs';
+import { nextDeliveryTimestamps, pollOnce, validateConfig } from '../service.mjs';
 
 const config = {
   schemaVersion: 1,
@@ -33,7 +33,10 @@ test('polls, transforms, and delivers one complete vertical slice', async () => 
     async readRateLimits() {
       return {
         ordinaryUsageAllowed: true,
-        rateLimits: { limitId: 'codex', primary: { usedPercent: 56, resetsAt: 1789816511 } },
+        rateLimits: {
+          limitId: 'codex',
+          primary: { usedPercent: 56, resetsAt: 1789816511, windowDurationMins: 10080 },
+        },
         rateLimitResetCredits: { availableCount: 2, credits: null },
       };
     },
@@ -45,4 +48,17 @@ test('polls, transforms, and delivers one complete vertical slice', async () => 
   assert.equal(result.message.remainingPercent, 44);
   assert.equal(result.delivery.status, 'written');
   assert.deepEqual(deliveries, [result.message]);
+});
+
+test('records positive acknowledgement separately from an unverified serial write', () => {
+  const initial = { lastSentSnapshotAt: 100, lastGoodSnapshotAt: 90 };
+  assert.deepEqual(nextDeliveryTimestamps(initial, 200, 'waiting_for_device'), initial);
+  assert.deepEqual(nextDeliveryTimestamps(initial, 200, 'written'), {
+    lastSentSnapshotAt: 200,
+    lastGoodSnapshotAt: 90,
+  });
+  assert.deepEqual(nextDeliveryTimestamps(initial, 200, 'displayed'), {
+    lastSentSnapshotAt: 200,
+    lastGoodSnapshotAt: 200,
+  });
 });

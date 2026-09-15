@@ -42,7 +42,13 @@ export class CodexAppServerClient {
     child.once('error', error => this.#failAll(appError('APP_SERVER_START_FAILED', error.message)));
     child.once('exit', (code, signal) => {
       this.child = null;
-      if (!this.closing) this.#failAll(appError('APP_SERVER_EXITED', `Codex app-server exited (${code ?? signal ?? 'unknown'})`));
+      if (!this.closing) {
+        const detail = this.stderr.trim();
+        this.#failAll(appError(
+          'APP_SERVER_EXITED',
+          `Codex app-server exited (${code ?? signal ?? 'unknown'})${detail ? `: ${detail}` : ''}`,
+        ));
+      }
     });
     await this.#request('initialize', {
       clientInfo: { name: 'codex-usage-desk-display', title: 'Codex Usage Desk Display', version: '0.1.0' },
