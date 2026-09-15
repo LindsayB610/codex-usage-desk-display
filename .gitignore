@@ -1,0 +1,17 @@
+.DS_Store
+build/
+*.log
+config.json
+.venv/
+__pycache__/
+*.pyc
+
+# Downloaded from Elecrow by firmware/prepare_firmware.py because the upstream
+# repository does not currently declare a redistribution license.
+firmware/codex_usage_display/EPD.cpp
+firmware/codex_usage_display/EPD.h
+firmware/codex_usage_display/EPD_Init.cpp
+firmware/codex_usage_display/EPD_Init.h
+firmware/codex_usage_display/EPDfont.h
+firmware/codex_usage_display/spi.cpp
+firmware/codex_usage_display/spi.h

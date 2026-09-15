@@ -1,0 +1,15 @@
+{
+  "name": "codex-usage-desk-display",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A local Codex usage display for the Elecrow 2.13-inch ESP32 e-paper CrowPanel",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "snapshot": "node cli.mjs snapshot",
+    "preview": "node cli.mjs preview"
+  }
+}

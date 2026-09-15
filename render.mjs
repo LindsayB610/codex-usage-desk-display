@@ -1,0 +1,33 @@
+import { validateDisplayMessage } from './protocol.mjs';
+
+function xml(value) {
+  return String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
+}
+
+export function renderDisplaySvg(input) {
+  const message = validateDisplayMessage(input);
+  const status = message.state === 'limited' ? 'LIMITED' : 'CODEX / WEEK';
+  const resetCredits = message.resetCredits === null ? '—' : String(message.resetCredits);
+  const barWidth = Math.round(message.remainingPercent * 0.93);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="250" height="122" viewBox="0 0 250 122" role="img" aria-label="Codex usage: ${message.remainingPercent}% remaining">
+  <rect width="250" height="122" fill="#f5f2e6"/>
+  <rect width="250" height="18" fill="#111413"/>
+  <g font-family="SFMono-Bold, Menlo, Consolas, monospace" fill="#111413">
+    <text x="8" y="12.5" font-size="7" font-weight="700" letter-spacing=".7" fill="#f5f2e6">${xml(status)}</text>
+    <text x="8" y="62" font-size="43" font-weight="900" letter-spacing="-3.5">${message.remainingPercent}%</text>
+    <text x="10" y="75" font-size="7" font-weight="700" letter-spacing=".7">REMAINING</text>
+    <rect x="9" y="85" width="99" height="10" fill="none" stroke="#111413" stroke-width="2"/>
+    <rect x="12" y="88" width="${barWidth}" height="4" fill="#111413"/>
+    <line x1="58" y1="86" x2="58" y2="94" stroke="#111413" opacity=".45"/>
+    <line x1="83" y1="86" x2="83" y2="94" stroke="#111413" opacity=".45"/>
+    <text x="10" y="108" font-size="5.5" font-weight="700" letter-spacing=".25">LAST REFRESH ${xml(message.updatedAtLabel)}</text>
+    <line x1="119" y1="27" x2="119" y2="112" stroke="#111413"/>
+    <text x="131" y="36" font-size="6" font-weight="700" letter-spacing=".4">AUTO RESET IN</text>
+    <text x="131" y="61" font-size="24" font-weight="900" letter-spacing="-1.5">${xml(message.resetInLabel)}</text>
+    <text x="131" y="74" font-size="6" font-weight="700" letter-spacing=".4">${xml(message.resetAtLabel)}</text>
+    <line x1="131" y1="84" x2="241" y2="84" stroke="#111413"/>
+    <text x="131" y="103" font-size="6" font-weight="700" letter-spacing=".4">FULL RESETS</text>
+    <text x="241" y="112" text-anchor="end" font-size="29" font-weight="900">${resetCredits}</text>
+  </g>
+</svg>\n`;
+}

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "codexPath": "/absolute/path/to/codex",
+  "transport": "direct_ch340_usb",
+  "directUsbPythonPath": "/absolute/path/to/repository/.venv/bin/python",
+  "devicePath": null,
+  "baudRate": 115200,
+  "connectDelayMs": 1500,
+  "pollIntervalSeconds": 300,
+  "timeZone": "America/Los_Angeles",
+  "healthPath": "/absolute/path/to/state/health.json"
+}
