@@ -4,11 +4,17 @@ A tiny, glanceable Codex allowance display built with an Elecrow 2.13-inch
 ESP32 e-paper CrowPanel and a local Mac service. It shows:
 
 - percentage remaining in the seven-day Codex window
+- paid-credit percentage after the included weekly allowance reaches zero
 - countdown and local time for the next automatic reset
 - available full-reset credits when Codex reports them
 - the local time of the last successful refresh
 
 ![Black-and-white Codex usage screen preview](docs/display-preview.svg)
+
+When paid credits take over, the same meter changes its header and label so the
+percentage cannot be mistaken for the weekly allowance:
+
+![Black-and-white paid-credit screen preview](docs/paid-credit-preview.svg)
 
 The repository also includes the parametric OpenSCAD source and printable
 meshes for the small magnetic picture-frame enclosure.
@@ -53,7 +59,14 @@ Authentication stays on the Mac. The host explicitly selects the reported
 `10080`-minute weekly window, whether Codex returns it as `primary` or
 `secondary`. The message sent to the ESP32 contains only display values and
 timestamps; it never contains an account ID, token, API key, or reset-credit
-ID. The service polls every five minutes. Routine updates use a low-flicker
+ID. The weekly meter remains active until the source reports 100% used. If a
+paid-credit full balance is configured, the meter then switches to the current
+paid balance as a percentage of that local full mark. The raw balance and its
+dollar value never cross the USB boundary. Paid mode remains live while a
+positive balance is available; `LIMITED` appears after both included and paid
+usage are exhausted.
+
+The service polls every five minutes. Routine updates use a low-flicker
 partial waveform, with a full cleanup refresh after 24 partials or after the
 board restarts.
 
@@ -107,9 +120,16 @@ npm run snapshot
 npm run preview -- /tmp/codex-usage-preview.svg
 ```
 
-No npm packages are required. `snapshot` prints the object that would be sent
-to the display. If Codex changes its local response, this command is the first
-diagnostic to run.
+No npm packages are required. By default, `snapshot` uses the command-line
+defaults. Point it at the installed private config to print the exact object the
+background service would send, including paid-credit mode:
+
+```sh
+CODEX_USAGE_DISPLAY_CONFIG="$HOME/Library/Application Support/Codex Usage Desk Display/config.json" npm run snapshot
+```
+
+The same environment variable works with `preview`. If Codex changes its local
+response, `snapshot` is the first diagnostic to run.
 
 Errors print only a stable code by default. For a local diagnostic, rerun with
 `CODEX_USAGE_DISPLAY_DEBUG=1`; that detail can contain local filesystem paths,
@@ -128,6 +148,23 @@ Then install the Python dependencies, private config, and per-user launch agent:
 ```sh
 node scripts/install-macos.mjs
 ```
+
+Paid-credit metering is optional. OpenAI's local rate-limit response reports
+the current credit balance but not the starting balance for a purchase, so the
+service needs a local denominator. Immediately after funding or reloading your
+credits, set `paidCreditFullBalance` in the generated private `config.json` to
+that full credit balance and restart the launch agent. You can also provide it
+during installation:
+
+```sh
+CODEX_PAID_CREDIT_FULL_BALANCE=1234 node scripts/install-macos.mjs
+```
+
+`1234` is only an example; use the balance that represents 100% for your
+account. A later `--replace` install preserves the existing value unless the
+environment variable is explicitly supplied. Set the variable to `none` to
+clear it. Automatic reloads refill the bar, and a balance above the configured
+full mark is capped at 100%.
 
 The installer writes private runtime state to
 `~/Library/Application Support/Codex Usage Desk Display/` and installs
@@ -150,6 +187,14 @@ For the optional serial transport, `status: "written"` means the bytes reached
 the operating-system device handle but were not positively acknowledged.
 `lastGoodSnapshotAt` advances only after a direct-USB `displayed`
 acknowledgement; `lastSentSnapshotAt` also records unacknowledged serial writes.
+
+### Upgrading an existing display
+
+Protocol v2 adds the weekly-versus-paid meter mode. Flash the new firmware
+before restarting the updated Mac service. The new firmware accepts both the
+old v1 weekly message and the new v2 message, so this order preserves the last
+good screen throughout the upgrade. Old firmware intentionally rejects the new
+message rather than guessing what its percentage means.
 
 ## Print the enclosure
 
@@ -178,6 +223,8 @@ if your operating system exposes the board normally.
   require or accept an OpenAI API key.
 - It does not redeem reset credits, purchase usage, send telemetry, or put
   credentials on the microcontroller.
+- Paid-credit support reads the current balance locally and sends only a derived
+  mode and percentage to the microcontroller.
 - The enclosure files are original project work and use the repository's MIT
   license. The Bambu project contains a P2S-specific profile; inspect the
   selected printer, plate, material, and slice before sending it to any printer.

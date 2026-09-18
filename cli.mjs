@@ -19,9 +19,18 @@ function safeError(error) {
   return { error: value };
 }
 
-async function snapshot(codexPath = process.env.CODEX_BIN || DEFAULT_CODEX) {
+async function snapshot() {
+  const config = process.env.CODEX_USAGE_DISPLAY_CONFIG
+    ? await readConfig(path.resolve(process.env.CODEX_USAGE_DISPLAY_CONFIG))
+    : null;
+  const codexPath = config?.codexPath ?? process.env.CODEX_BIN ?? DEFAULT_CODEX;
   const client = new CodexAppServerClient({ command: codexPath });
-  try { return buildDisplayMessage(await client.readRateLimits()); }
+  try {
+    return buildDisplayMessage(await client.readRateLimits(), {
+      timeZone: config?.timeZone,
+      paidCreditFullBalance: config?.paidCreditFullBalance,
+    });
+  }
   finally { await client.close(); }
 }
 

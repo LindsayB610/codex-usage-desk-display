@@ -8,5 +8,6 @@
   "connectDelayMs": 1500,
   "pollIntervalSeconds": 300,
   "timeZone": "America/Los_Angeles",
+  "paidCreditFullBalance": null,
   "healthPath": "/absolute/path/to/state/health.json"
 }

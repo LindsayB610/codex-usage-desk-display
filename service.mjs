@@ -21,6 +21,7 @@ export function validateConfig(value) {
     connectDelayMs: value.connectDelayMs ?? 1500,
     pollIntervalSeconds: value.pollIntervalSeconds ?? 300,
     timeZone: value.timeZone ?? 'America/Los_Angeles',
+    paidCreditFullBalance: value.paidCreditFullBalance ?? null,
     healthPath: value.healthPath,
   };
   if (config.schemaVersion !== 1 || typeof config.codexPath !== 'string' || !path.isAbsolute(config.codexPath)) throw serviceError('INVALID_CONFIG');
@@ -33,6 +34,10 @@ export function validateConfig(value) {
   if (!Number.isInteger(config.pollIntervalSeconds) || config.pollIntervalSeconds < 30 || config.pollIntervalSeconds > 3600) throw serviceError('INVALID_CONFIG');
   if (typeof config.timeZone !== 'string' || config.timeZone.length > 80) throw serviceError('INVALID_CONFIG');
   try { new Intl.DateTimeFormat('en-US', { timeZone: config.timeZone }).format(); } catch { throw serviceError('INVALID_CONFIG'); }
+  if (config.paidCreditFullBalance !== null
+      && (!Number.isFinite(config.paidCreditFullBalance)
+        || config.paidCreditFullBalance <= 0
+        || config.paidCreditFullBalance > 1000000000)) throw serviceError('INVALID_CONFIG');
   if (typeof config.healthPath !== 'string' || !path.isAbsolute(config.healthPath) || !config.healthPath.endsWith('.json')) throw serviceError('INVALID_CONFIG');
   return Object.freeze(config);
 }
@@ -70,6 +75,7 @@ export async function pollOnce({ client, transport, config, nowEpochSeconds = Ma
   const message = buildDisplayMessage(response, {
     nowEpochSeconds,
     timeZone: config.timeZone,
+    paidCreditFullBalance: config.paidCreditFullBalance,
   });
   const delivery = await transport.send(message);
   return { message, delivery };

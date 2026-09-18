@@ -6,16 +6,18 @@ function xml(value) {
 
 export function renderDisplaySvg(input) {
   const message = validateDisplayMessage(input);
-  const status = message.state === 'limited' ? 'LIMITED' : 'CODEX / WEEK';
+  const paid = message.usageMode === 'paid';
+  const status = message.state === 'limited' ? 'LIMITED' : paid ? 'CODEX / CREDITS' : 'CODEX / WEEK';
+  const meterLabel = paid ? 'CREDITS LEFT' : 'REMAINING';
   const resetCredits = message.resetCredits === null ? '—' : String(message.resetCredits);
   const barWidth = Math.round(message.remainingPercent * 0.93);
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="250" height="122" viewBox="0 0 250 122" role="img" aria-label="Codex usage: ${message.remainingPercent}% remaining">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="250" height="122" viewBox="0 0 250 122" role="img" aria-label="Codex ${paid ? 'paid credits' : 'weekly usage'}: ${message.remainingPercent}% remaining">
   <rect width="250" height="122" fill="#f5f2e6"/>
   <rect width="250" height="18" fill="#111413"/>
   <g font-family="SFMono-Bold, Menlo, Consolas, monospace" fill="#111413">
     <text x="8" y="12.5" font-size="7" font-weight="700" letter-spacing=".7" fill="#f5f2e6">${xml(status)}</text>
     <text x="8" y="62" font-size="43" font-weight="900" letter-spacing="-3.5">${message.remainingPercent}%</text>
-    <text x="10" y="75" font-size="7" font-weight="700" letter-spacing=".7">REMAINING</text>
+    <text x="10" y="75" font-size="7" font-weight="700" letter-spacing=".7">${meterLabel}</text>
     <rect x="9" y="85" width="99" height="10" fill="none" stroke="#111413" stroke-width="2"/>
     <rect x="12" y="88" width="${barWidth}" height="4" fill="#111413"/>
     <line x1="58" y1="86" x2="58" y2="94" stroke="#111413" opacity=".45"/>

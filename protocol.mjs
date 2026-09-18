@@ -1,4 +1,4 @@
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 export const MESSAGE_TYPE = 'codex_usage';
 
 function boundedInteger(value, minimum, maximum, name) {
@@ -25,18 +25,23 @@ export function validateDisplayMessage(value) {
   }
   const expected = [
     'generatedAt', 'remainingPercent', 'resetAt', 'resetAtLabel', 'resetCredits',
-    'resetInLabel', 'schemaVersion', 'state', 'type', 'updatedAtLabel', 'usedPercent',
+    'resetInLabel', 'schemaVersion', 'state', 'type', 'updatedAtLabel', 'usageMode',
+    'usedPercent',
   ];
   if (JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(expected.sort())) {
     throw Object.assign(new Error('Display message fields changed'), { code: 'INVALID_DISPLAY_MESSAGE' });
   }
-  if (value.schemaVersion !== PROTOCOL_VERSION || value.type !== MESSAGE_TYPE || !['live', 'limited'].includes(value.state)) {
+  if (value.schemaVersion !== PROTOCOL_VERSION
+      || value.type !== MESSAGE_TYPE
+      || !['live', 'limited'].includes(value.state)
+      || !['included', 'paid'].includes(value.usageMode)) {
     throw Object.assign(new Error('Unsupported display message'), { code: 'INVALID_DISPLAY_MESSAGE' });
   }
   const message = {
     schemaVersion: PROTOCOL_VERSION,
     type: MESSAGE_TYPE,
     state: value.state,
+    usageMode: value.usageMode,
     generatedAt: boundedInteger(value.generatedAt, 0, Number.MAX_SAFE_INTEGER, 'generatedAt'),
     usedPercent: boundedInteger(value.usedPercent, 0, 100, 'usedPercent'),
     remainingPercent: boundedInteger(value.remainingPercent, 0, 100, 'remainingPercent'),

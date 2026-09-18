@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildDisplayMessage, formatCountdown, formatResetAt, formatUpdatedAt,
-  selectCodexSnapshot, selectWeeklyWindow,
+  selectCodexSnapshot, selectUsageMeter, selectWeeklyWindow,
 } from '../core.mjs';
 
 const response = {
@@ -10,7 +10,11 @@ const response = {
   rateLimits: { primary: { usedPercent: 99, resetsAt: 2000, windowDurationMins: 10080 } },
   rateLimitsByLimitId: {
     codex_other: { limitId: 'codex_other', primary: { usedPercent: 2, resetsAt: 3000, windowDurationMins: 300 } },
-    codex: { limitId: 'codex', primary: { usedPercent: 56, resetsAt: 1789816511, windowDurationMins: 10080 } },
+    codex: {
+      limitId: 'codex',
+      primary: { usedPercent: 56, resetsAt: 1789816511, windowDurationMins: 10080 },
+      credits: { hasCredits: true, unlimited: false, balance: '2000' },
+    },
   },
   rateLimitResetCredits: { availableCount: 2, credits: [] },
 };
@@ -36,9 +40,10 @@ test('fails closed rather than labeling a non-weekly window as weekly', () => {
 test('builds the privacy-minimized landscape message', () => {
   const message = buildDisplayMessage(response, { nowEpochSeconds: 1789311720 });
   assert.deepEqual(message, {
-    schemaVersion: 1,
+    schemaVersion: 2,
     type: 'codex_usage',
     state: 'live',
+    usageMode: 'included',
     generatedAt: 1789311720,
     usedPercent: 56,
     remainingPercent: 44,
@@ -51,6 +56,74 @@ test('builds the privacy-minimized landscape message', () => {
   assert.equal(JSON.stringify(message).includes('account'), false);
 });
 
+test('keeps the weekly allowance on screen until it is exhausted', () => {
+  const snapshot = response.rateLimitsByLimitId.codex;
+  assert.deepEqual(selectUsageMeter(snapshot, 2000), {
+    usageMode: 'included',
+    usedPercent: 56,
+    remainingPercent: 44,
+  });
+});
+
+test('does not switch to paid credits merely because weekly display rounding reaches zero', () => {
+  const snapshot = {
+    ...response.rateLimitsByLimitId.codex,
+    primary: { usedPercent: 99.6, resetsAt: 1789816511, windowDurationMins: 10080 },
+  };
+  assert.deepEqual(selectUsageMeter(snapshot, 2000), {
+    usageMode: 'included',
+    usedPercent: 100,
+    remainingPercent: 0,
+  });
+});
+
+test('switches the meter to paid-credit percentage after weekly usage reaches zero', () => {
+  const snapshot = {
+    ...response.rateLimitsByLimitId.codex,
+    primary: { usedPercent: 100, resetsAt: 1789816511, windowDurationMins: 10080 },
+    credits: { hasCredits: true, unlimited: false, balance: '1000' },
+  };
+  const message = buildDisplayMessage({
+    ...response,
+    rateLimitsByLimitId: { codex: snapshot },
+  }, { nowEpochSeconds: 1789311720, paidCreditFullBalance: 2000 });
+  assert.equal(message.usageMode, 'paid');
+  assert.equal(message.remainingPercent, 50);
+  assert.equal(message.usedPercent, 50);
+});
+
+test('paid-credit meter clamps reloads to 100 and keeps any positive balance visible', () => {
+  const exhausted = balance => ({
+    primary: { usedPercent: 100, resetsAt: 1789816511, windowDurationMins: 10080 },
+    credits: { hasCredits: true, unlimited: false, balance },
+  });
+  assert.equal(selectUsageMeter(exhausted('2500'), 2000).remainingPercent, 100);
+  assert.equal(selectUsageMeter(exhausted('0.01'), 2000).remainingPercent, 1);
+  assert.equal(selectUsageMeter(exhausted('0'), 2000).remainingPercent, 0);
+  assert.deepEqual(selectUsageMeter({
+    ...exhausted('0'),
+    credits: { hasCredits: false, unlimited: false, balance: '0' },
+  }, 2000), {
+    usageMode: 'paid',
+    usedPercent: 100,
+    remainingPercent: 0,
+  });
+  assert.equal(selectUsageMeter(exhausted('-2.5'), 2000).remainingPercent, 0);
+});
+
+test('does not invent a paid-credit percentage without a valid configured full balance', () => {
+  const snapshot = {
+    primary: { usedPercent: 100, resetsAt: 1789816511, windowDurationMins: 10080 },
+    credits: { hasCredits: true, unlimited: false, balance: '2000' },
+  };
+  assert.deepEqual(selectUsageMeter(snapshot), {
+    usageMode: 'included',
+    usedPercent: 100,
+    remainingPercent: 0,
+  });
+  assert.equal(selectUsageMeter({ ...snapshot, credits: { hasCredits: true, balance: 'bogus' } }, 2000).usageMode, 'included');
+});
+
 test('unknown reset-credit count stays unknown rather than becoming zero', () => {
   const value = { ...response, rateLimitResetCredits: null };
   assert.equal(buildDisplayMessage(value, { nowEpochSeconds: 1789311720 }).resetCredits, null);
@@ -61,6 +134,38 @@ test('backend ordinary-usage denial is represented without changing the values',
   const message = buildDisplayMessage(value, { nowEpochSeconds: 1789311720 });
   assert.equal(message.state, 'limited');
   assert.equal(message.remainingPercent, 44);
+});
+
+test('paid credits keep the display live after included usage is denied', () => {
+  const snapshot = {
+    ...response.rateLimitsByLimitId.codex,
+    primary: { usedPercent: 100, resetsAt: 1789816511, windowDurationMins: 10080 },
+    credits: { hasCredits: true, unlimited: false, balance: '1000' },
+  };
+  const message = buildDisplayMessage({
+    ...response,
+    ordinaryUsageAllowed: false,
+    rateLimitsByLimitId: { codex: snapshot },
+  }, { nowEpochSeconds: 1789311720, paidCreditFullBalance: 2000 });
+  assert.equal(message.state, 'live');
+  assert.equal(message.usageMode, 'paid');
+  assert.equal(message.remainingPercent, 50);
+});
+
+test('the display becomes limited when included and paid usage are both exhausted', () => {
+  const snapshot = {
+    ...response.rateLimitsByLimitId.codex,
+    primary: { usedPercent: 100, resetsAt: 1789816511, windowDurationMins: 10080 },
+    credits: { hasCredits: false, unlimited: false, balance: '0' },
+  };
+  const message = buildDisplayMessage({
+    ...response,
+    ordinaryUsageAllowed: false,
+    rateLimitsByLimitId: { codex: snapshot },
+  }, { nowEpochSeconds: 1789311720, paidCreditFullBalance: 2000 });
+  assert.equal(message.state, 'limited');
+  assert.equal(message.usageMode, 'paid');
+  assert.equal(message.remainingPercent, 0);
 });
 
 test('countdown and Pacific reset labels cover boundary states', () => {

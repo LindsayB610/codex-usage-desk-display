@@ -19,6 +19,7 @@ uint8_t partialRefreshesSinceFull = 0;
 
 struct DisplaySnapshot {
   const char *state;
+  const char *usageMode;
   uint64_t generatedAt;
   uint8_t usedPercent;
   uint8_t remainingPercent;
@@ -39,7 +40,7 @@ bool isExpectedKey(const char *key) {
   static const char *const keys[] = {
     "schemaVersion", "type", "state", "generatedAt", "usedPercent",
     "remainingPercent", "resetAt", "resetInLabel", "resetAtLabel",
-    "resetCredits", "updatedAtLabel"
+    "resetCredits", "updatedAtLabel", "usageMode"
   };
   for (const char *expected : keys) {
     if (strcmp(key, expected) == 0) return true;
@@ -68,16 +69,24 @@ bool isUnsignedInteger(JsonVariantConst value, uint64_t maximum) {
 bool decodeSnapshot(JsonDocument &document, DisplaySnapshot &snapshot) {
   if (!document.is<JsonObject>()) return false;
   JsonObjectConst object = document.as<JsonObjectConst>();
-  if (object.size() != 11) return false;
+  if (!object["schemaVersion"].is<uint8_t>()) return false;
+  const uint8_t schemaVersion = object["schemaVersion"].as<uint8_t>();
+  if (schemaVersion != 1 && schemaVersion != 2) return false;
+  if (object.size() != (schemaVersion == 1 ? 11 : 12)) return false;
   for (JsonPairConst pair : object) {
     if (!isExpectedKey(pair.key().c_str())) return false;
   }
 
-  if (!object["schemaVersion"].is<uint8_t>() || object["schemaVersion"].as<uint8_t>() != 1) return false;
   if (!object["type"].is<const char *>() || strcmp(object["type"].as<const char *>(), "codex_usage") != 0) return false;
   if (!object["state"].is<const char *>()) return false;
   const char *state = object["state"].as<const char *>();
   if (strcmp(state, "live") != 0 && strcmp(state, "limited") != 0) return false;
+  const char *usageMode = "included";
+  if (schemaVersion == 2) {
+    if (!object["usageMode"].is<const char *>()) return false;
+    usageMode = object["usageMode"].as<const char *>();
+    if (strcmp(usageMode, "included") != 0 && strcmp(usageMode, "paid") != 0) return false;
+  }
 
   constexpr uint64_t MAX_SAFE_INTEGER = 9007199254740991ULL;
   if (!isUnsignedInteger(object["generatedAt"], MAX_SAFE_INTEGER)) return false;
@@ -101,6 +110,7 @@ bool decodeSnapshot(JsonDocument &document, DisplaySnapshot &snapshot) {
 
   snapshot = {
     state,
+    usageMode,
     object["generatedAt"].as<uint64_t>(),
     usedPercent,
     remainingPercent,
@@ -202,13 +212,16 @@ void renderSnapshot(const DisplaySnapshot &snapshot) {
   memset(ImageBW, 0xFF, ALLSCREEN_BYTES);
 
   fillRectangle(0, 0, 249, 17, WHITE);
-  const char *header = strcmp(snapshot.state, "limited") == 0 ? "LIMITED" : "CODEX / WEEK";
+  const bool paid = strcmp(snapshot.usageMode, "paid") == 0;
+  const char *header = strcmp(snapshot.state, "limited") == 0
+    ? "LIMITED"
+    : (paid ? "CODEX / CREDITS" : "CODEX / WEEK");
   EPD_ShowString(8, 3, header, WHITE, 12);
 
   char remaining[6];
   snprintf(remaining, sizeof(remaining), "%u%%", snapshot.remainingPercent);
   drawUsageText(remaining, 29);
-  EPD_ShowString(9, 74, "REMAINING", BLACK, 12);
+  EPD_ShowString(9, 74, paid ? "CREDITS LEFT" : "REMAINING", BLACK, 12);
 
   EPD_DrawRectangle(9, 87, 108, 96, WHITE);
   EPD_DrawRectangle(10, 88, 107, 95, WHITE);

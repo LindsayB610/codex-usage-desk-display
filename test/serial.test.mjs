@@ -6,7 +6,7 @@ import path from 'node:path';
 import { SerialTransport, selectSerialDevice } from '../serial.mjs';
 
 const message = {
-  schemaVersion: 1, type: 'codex_usage', state: 'live', generatedAt: 1000,
+  schemaVersion: 2, type: 'codex_usage', state: 'live', usageMode: 'included', generatedAt: 1000,
   usedPercent: 56, remainingPercent: 44, resetAt: 2000, resetInLabel: '16m',
   resetAtLabel: 'SAT · 4:15 AM', resetCredits: 2, updatedAtLabel: '12:42',
 };

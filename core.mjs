@@ -9,6 +9,42 @@ function clampPercent(value) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
+function parseCreditBalance(value) {
+  if (typeof value !== 'number' && typeof value !== 'string') return null;
+  if (typeof value === 'string' && !/^-?\d+(?:\.\d+)?$/.test(value)) return null;
+  const balance = Number(value);
+  return Number.isFinite(balance) ? Math.max(0, balance) : null;
+}
+
+export function selectUsageMeter(snapshot, paidCreditFullBalance = null) {
+  const weeklyWindow = selectWeeklyWindow(snapshot);
+  const weeklyUsedPercent = clampPercent(weeklyWindow.usedPercent);
+  const weeklyRemainingPercent = 100 - weeklyUsedPercent;
+  const weeklyExhausted = weeklyWindow.usedPercent >= 100;
+  const creditBalance = parseCreditBalance(snapshot.credits?.balance);
+  const canMeterPaidCredits = weeklyExhausted
+    && creditBalance !== null
+    && Number.isFinite(paidCreditFullBalance)
+    && paidCreditFullBalance > 0;
+
+  if (!canMeterPaidCredits) {
+    return Object.freeze({
+      usageMode: 'included',
+      usedPercent: weeklyUsedPercent,
+      remainingPercent: weeklyRemainingPercent,
+    });
+  }
+
+  const paidRemainingPercent = creditBalance === 0
+    ? 0
+    : Math.max(1, Math.min(100, Math.ceil((creditBalance / paidCreditFullBalance) * 100)));
+  return Object.freeze({
+    usageMode: 'paid',
+    usedPercent: 100 - paidRemainingPercent,
+    remainingPercent: paidRemainingPercent,
+  });
+}
+
 export function selectCodexSnapshot(response) {
   if (!response || typeof response !== 'object' || Array.isArray(response)) fail('INVALID_RATE_LIMIT_RESPONSE');
   const buckets = response.rateLimitsByLimitId;
@@ -68,22 +104,27 @@ export function formatUpdatedAt(epochSeconds, timeZone = 'America/Los_Angeles') 
 export function buildDisplayMessage(response, {
   nowEpochSeconds = Math.floor(Date.now() / 1000),
   timeZone = 'America/Los_Angeles',
+  paidCreditFullBalance = null,
 } = {}) {
   if (!Number.isInteger(nowEpochSeconds) || nowEpochSeconds < 0) fail('INVALID_CURRENT_TIME');
   const snapshot = selectCodexSnapshot(response);
   const window = selectWeeklyWindow(snapshot);
-  const usedPercent = clampPercent(window.usedPercent);
+  const meter = selectUsageMeter(snapshot, paidCreditFullBalance);
   const resetAt = Number.isInteger(window.resetsAt) && window.resetsAt >= 0 ? window.resetsAt : null;
   const resetCredits = Number.isInteger(response.rateLimitResetCredits?.availableCount)
     ? Math.max(0, response.rateLimitResetCredits.availableCount)
     : null;
+  const paidUsageAvailable = meter.usageMode === 'paid'
+    && meter.remainingPercent > 0
+    && snapshot.credits?.hasCredits === true;
   return validateDisplayMessage({
-    schemaVersion: 1,
+    schemaVersion: 2,
     type: 'codex_usage',
-    state: response.ordinaryUsageAllowed === false ? 'limited' : 'live',
+    state: response.ordinaryUsageAllowed === false && !paidUsageAvailable ? 'limited' : 'live',
+    usageMode: meter.usageMode,
     generatedAt: nowEpochSeconds,
-    usedPercent,
-    remainingPercent: 100 - usedPercent,
+    usedPercent: meter.usedPercent,
+    remainingPercent: meter.remainingPercent,
     resetAt,
     resetInLabel: resetAt === null ? 'UNKNOWN' : formatCountdown(nowEpochSeconds, resetAt),
     resetAtLabel: formatResetAt(resetAt, timeZone),

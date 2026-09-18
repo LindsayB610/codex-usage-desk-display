@@ -7,7 +7,7 @@ versions must be rejected without replacing the last valid screen.
 Example:
 
 ```json
-{"schemaVersion":1,"type":"codex_usage","state":"live","generatedAt":1789311720,"usedPercent":56,"remainingPercent":44,"resetAt":1789816511,"resetInLabel":"5d 15h","resetAtLabel":"SAT · 4:15 AM","resetCredits":2,"updatedAtLabel":"8:02 AM"}
+{"schemaVersion":2,"type":"codex_usage","state":"live","usageMode":"included","generatedAt":1789311720,"usedPercent":56,"remainingPercent":44,"resetAt":1789816511,"resetInLabel":"5d 15h","resetAtLabel":"SAT · 4:15 AM","resetCredits":2,"updatedAtLabel":"8:02 AM"}
 ```
 
 The firmware must:
@@ -18,7 +18,13 @@ The firmware must:
 4. preserve the last frame when messages stop;
 5. treat `resetCredits: null` as unknown (`—`), never zero;
 6. show `LIMITED` when `state` is `limited`;
-7. reject malformed input and continue listening.
+7. show `CODEX / WEEK` and `REMAINING` for `usageMode: "included"`;
+8. show `CODEX / CREDITS` and `CREDITS LEFT` for `usageMode: "paid"`;
+9. reject malformed input and continue listening.
+
+Firmware protocol v2 accepts the previous v1 host message during a rolling
+upgrade and treats it as `usageMode: "included"`. The firmware acknowledgement
+remains v1 because that response contract did not change.
 
 Every frame must show `LAST REFRESH` plus `updatedAtLabel` beneath the percentage
 bar. If USB power disappears, the physical e-paper image and its absolute

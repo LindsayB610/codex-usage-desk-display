@@ -23,6 +23,31 @@ function xml(value) {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
+function validPaidCreditFullBalance(value) {
+  return Number.isFinite(value) && value > 0 && value <= 1000000000;
+}
+
+function readExistingPaidCreditFullBalance() {
+  if (!replace || !fs.existsSync(configPath)) return null;
+  try {
+    const value = JSON.parse(fs.readFileSync(configPath, 'utf8')).paidCreditFullBalance;
+    return validPaidCreditFullBalance(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolvePaidCreditFullBalance() {
+  const raw = process.env.CODEX_PAID_CREDIT_FULL_BALANCE;
+  if (raw === undefined) return readExistingPaidCreditFullBalance();
+  if (raw === '' || raw.toLowerCase() === 'null' || raw.toLowerCase() === 'none') return null;
+  const value = Number(raw);
+  if (!validPaidCreditFullBalance(value)) {
+    throw new Error('CODEX_PAID_CREDIT_FULL_BALANCE must be a positive number, null, or none.');
+  }
+  return value;
+}
+
 const codexPath = process.env.CODEX_BIN
   || executable('codex')
   || '/Applications/ChatGPT.app/Contents/Resources/codex';
@@ -39,6 +64,7 @@ const python = executable('python3');
 if (!python) throw new Error('python3 is required.');
 const venvPython = path.join(repository, '.venv', 'bin', 'python');
 const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+const paidCreditFullBalance = resolvePaidCreditFullBalance();
 const config = {
   schemaVersion: 1,
   codexPath,
@@ -49,6 +75,7 @@ const config = {
   connectDelayMs: 1500,
   pollIntervalSeconds: 300,
   timeZone,
+  paidCreditFullBalance,
   healthPath: path.join(state, 'health.json'),
 };
 const template = fs.readFileSync(
@@ -61,7 +88,7 @@ const plist = template
   .replaceAll('__STATE_PATH__', xml(state));
 
 if (dryRun) {
-  process.stdout.write(`${JSON.stringify({ repository, state, plistPath, codexPath, nodePath: process.execPath, python, timeZone }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ repository, state, plistPath, codexPath, nodePath: process.execPath, python, timeZone, paidCreditFullBalance }, null, 2)}\n`);
   process.exit(0);
 }
 if (!replace && (fs.existsSync(configPath) || fs.existsSync(plistPath))) {
