@@ -19,6 +19,12 @@ percentage cannot be mistaken for the weekly allowance:
 The repository also includes the parametric OpenSCAD source and printable
 meshes for the small magnetic picture-frame enclosure.
 
+## Build story and enclosure downloads
+
+- [Read the build story](https://lindsaybrunner.com/blog/2026-09-25/build-e-ink-codex-usage-display-with-ai/)
+- [Download the enclosure on Printables](https://www.printables.com/model/1843634-magnetic-desk-frame-for-elecrow-213-inch-e-paper-c)
+- [Get the enclosure and Bambu Studio project on MakerWorld](https://makerworld.com/en/models/3312280-magnetic-frame-for-elecrow-2-13in-e-paper#profileId-3760454)
+
 ## Hardware
 
 - [Elecrow 2.13-inch ESP32 e-paper CrowPanel](https://www.amazon.com/dp/B0FX4PZZMQ)
@@ -38,11 +44,9 @@ The display firmware and host service have been physically tested on:
 - the board's CH340K USB bridge, accessed through libusb
 - Node.js 22 or newer and Python 3
 
-The V5 enclosure keeps the physically tested V4 frame and 60-degree stand,
-then replaces the rear cover with a one-layer preload correction. Its geometry,
-clearances, manifold meshes, and Bambu slice have been checked, but that revised
-rear cover still needs its final physical print test. See
-[the enclosure notes](enclosure/README.md) before printing it.
+The V5 enclosure keeps the V4 frame and 60-degree stand, then replaces the
+rear cover with a one-layer preload correction, as described in the build
+story. See [the enclosure notes](enclosure/README.md) before printing it.
 
 The host reads `account/rateLimits/read` from the experimental local Codex
 app-server. This is not a documented, stable OpenAI public API. A future Codex
@@ -225,8 +229,11 @@ if your operating system exposes the board normally.
   credentials on the microcontroller.
 - Paid-credit support reads the current balance locally and sends only a derived
   mode and percentage to the microcontroller.
-- The enclosure files are original project work and use the repository's MIT
-  license. The Bambu project contains a P2S-specific profile; inspect the
+- The enclosure follows the picture-frame form and removable-leg concept of
+  [Vladimír Waas's seven-inch e-ink case](https://www.printables.com/model/768510-e-ink-7-case-developed-for-zivyobrazeu-martin-cubi).
+  It was rebuilt for the CrowPanel, with a magnetic cover and bottom cable
+  path, and is shared under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/),
+  matching the published Printables model. The Bambu project contains a P2S-specific profile; inspect the
   selected printer, plate, material, and slice before sending it to any printer.
 
 See [the protocol](firmware/PROTOCOL.md), [the product contract](docs/product-contract.md),

@@ -55,5 +55,17 @@ degrees back from vertical.
   `v5-geometry-report.json`.
 
 Read [`DESIGN-AUDIT.md`](DESIGN-AUDIT.md) for the measured dimensions and the
-full V5 preprint audit. The V4 frame and leg were physically tested; V5 changes
-only the backplate preload and still needs its final physical print test.
+full V5 preprint audit. V5 changes only the backplate preload. The
+[build story](https://lindsaybrunner.com/blog/2026-09-25/build-e-ink-codex-usage-display-with-ai/)
+describes the print and fit iterations.
+
+## Attribution and license
+
+The picture-frame form and removable rear-leg concept were inspired by
+[Vladimír Waas's seven-inch e-ink case](https://www.printables.com/model/768510-e-ink-7-case-developed-for-zivyobrazeu-martin-cubi).
+This enclosure was rebuilt parametrically for the smaller CrowPanel, with a
+centered active-screen opening, magnetic rear cover, and bottom USB-C path.
+The enclosure source and models are shared under
+[Creative Commons Attribution-ShareAlike 4.0 International](https://creativecommons.org/licenses/by-sa/4.0/),
+as on the published Printables listing. The repository's MIT license applies
+to project code unless a file carries a separate license notice.
