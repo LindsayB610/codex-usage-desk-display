@@ -50,7 +50,7 @@ function resolvePaidCreditFullBalance() {
 
 const codexPath = process.env.CODEX_BIN
   || executable('codex')
-  || '/Applications/ChatGPT.app/Contents/Resources/codex';
+  || '/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex';
 if (!path.isAbsolute(codexPath) || !fs.existsSync(codexPath)) {
   throw new Error('Could not find Codex. Set CODEX_BIN to its absolute path.');
 }

@@ -7,7 +7,7 @@ import { buildDisplayMessage } from './core.mjs';
 import { renderDisplaySvg } from './render.mjs';
 import { readConfig, runService } from './service.mjs';
 
-const DEFAULT_CODEX = '/Applications/ChatGPT.app/Contents/Resources/codex';
+const DEFAULT_CODEX = '/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex';
 
 function safeError(error) {
   const value = {
