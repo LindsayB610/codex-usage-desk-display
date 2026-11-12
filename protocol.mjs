@@ -31,27 +31,29 @@ export function validateDisplayMessage(value) {
   if (JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(expected.sort())) {
     throw Object.assign(new Error('Display message fields changed'), { code: 'INVALID_DISPLAY_MESSAGE' });
   }
-  if (value.schemaVersion !== PROTOCOL_VERSION
+  const learning = value.schemaVersion === 3 && value.usageMode === 'learning';
+  if ((!learning && value.schemaVersion !== PROTOCOL_VERSION)
       || value.type !== MESSAGE_TYPE
       || !['live', 'limited'].includes(value.state)
-      || !['included', 'paid'].includes(value.usageMode)) {
+      || (!learning && !['included', 'paid'].includes(value.usageMode))
+      || (learning && (value.usedPercent !== null || value.remainingPercent !== null))) {
     throw Object.assign(new Error('Unsupported display message'), { code: 'INVALID_DISPLAY_MESSAGE' });
   }
   const message = {
-    schemaVersion: PROTOCOL_VERSION,
+    schemaVersion: value.schemaVersion,
     type: MESSAGE_TYPE,
     state: value.state,
     usageMode: value.usageMode,
     generatedAt: boundedInteger(value.generatedAt, 0, Number.MAX_SAFE_INTEGER, 'generatedAt'),
-    usedPercent: boundedInteger(value.usedPercent, 0, 100, 'usedPercent'),
-    remainingPercent: boundedInteger(value.remainingPercent, 0, 100, 'remainingPercent'),
+    usedPercent: learning ? null : boundedInteger(value.usedPercent, 0, 100, 'usedPercent'),
+    remainingPercent: learning ? null : boundedInteger(value.remainingPercent, 0, 100, 'remainingPercent'),
     resetAt: nullableInteger(value.resetAt, 0, Number.MAX_SAFE_INTEGER, 'resetAt'),
     resetInLabel: shortString(value.resetInLabel, 16, 'resetInLabel'),
     resetAtLabel: shortString(value.resetAtLabel, 24, 'resetAtLabel'),
     resetCredits: nullableInteger(value.resetCredits, 0, 999, 'resetCredits'),
     updatedAtLabel: shortString(value.updatedAtLabel, 16, 'updatedAtLabel'),
   };
-  if (message.usedPercent + message.remainingPercent !== 100) {
+  if (!learning && message.usedPercent + message.remainingPercent !== 100) {
     throw Object.assign(new Error('Usage percentages disagree'), { code: 'INVALID_DISPLAY_MESSAGE' });
   }
   return Object.freeze(message);

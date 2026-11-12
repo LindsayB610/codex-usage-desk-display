@@ -36,3 +36,11 @@ test('rejects unsupported versions, modes, and control characters', () => {
 test('rejects internally inconsistent percentages', () => {
   assert.throws(() => encodeDisplayMessage({ ...message, remainingPercent: 45 }), { code: 'INVALID_DISPLAY_MESSAGE' });
 });
+
+test('only v3 learning frames can omit numeric percentages', () => {
+  const v3 = { ...message, schemaVersion: 3, usageMode: 'learning', usedPercent: null, remainingPercent: null };
+  assert.deepEqual(parseDisplayMessage(encodeDisplayMessage(v3)), v3);
+  for (const override of [{ schemaVersion: 2 }, { usageMode: 'paid' }, { remainingPercent: 0 }, { usedPercent: 100 }]) {
+    assert.throws(() => encodeDisplayMessage({ ...v3, ...override }), { code: 'INVALID_DISPLAY_MESSAGE' });
+  }
+});

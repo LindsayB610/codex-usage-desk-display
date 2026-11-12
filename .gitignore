@@ -2,6 +2,8 @@
 build/
 *.log
 config.json
+*.credits.json
+*.auto-credits.json
 .venv/
 __pycache__/
 *.pyc

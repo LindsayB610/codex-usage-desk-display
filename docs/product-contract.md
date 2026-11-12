@@ -6,7 +6,7 @@ Provide a passive, glanceable view of the current Codex allowance: percentage
 remaining, the next automatic reset, available full-reset credits, and the last
 successful refresh time. The weekly allowance owns the primary meter until it
 reaches zero. The meter then switches to the remaining percentage of purchased
-credits when a paid-credit capacity is configured.
+credits once a full mark is known, showing “Learning refill” while it is learning.
 
 ## Ownership boundary
 
@@ -26,20 +26,17 @@ shorter allowance. Weekly remaining percentage is `100 - usedPercent`; the
 reset-credit count is used only when the response contains an integer
 `availableCount`.
 
-OpenAI reports the current purchased-credit balance but does not report the
-starting balance for a purchase as part of this response. The Mac therefore
-stores `paidCreditFullBalance` as local configuration. Once weekly remaining is
-zero, paid-credit remaining percentage is the current balance divided by that
-observed full balance, rounded up so a positive balance never appears as
-zero. The configured capacity seeds the tracker. The service saves the first
-observed higher balance after a rise as the new full mark, and persists its
-last observation locally across restarts. Disabling metering pauses the tracker.
-An invalid or unwritable tracker or an unlimited credit reading leaves the
-weekly screen active. A temporarily negative
-balance is displayed as zero until the next reload. A missing or malformed
-balance or capacity fails closed to the weekly zero state. The ESP32 receives
-only the resulting mode and percentage, never the monetary value or raw credit
-balance.
+The Mac saves the first valid balance privately and learns the full mark on
+an observed rise. It samples at most 60 seconds apart during ordinary operation,
+with an earlier read when a balance-bearing notification arrives. Notifications
+are hints to read the authoritative Codex bucket. They never cause a panel
+refresh by themselves. The panel follows its configured refresh interval.
+
+Until the first observed increase, positive paid credit use shows “Learning
+refill” with no percentage or bar. Known percentages use the observed full
+balance and round up. Existing seeded installations retain their saved state.
+Missing, unlimited, or malformed readings do not modify the mark. A tracker
+failure falls back to the weekly screen. Raw balances stay on the Mac.
 
 When the included bucket is exhausted, Codex may report ordinary usage as
 denied even while purchased credits remain available. A positive paid-credit

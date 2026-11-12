@@ -26,8 +26,11 @@ Firmware protocol v2 accepts the previous v1 host message during a rolling
 upgrade and treats it as `usageMode: "included"`. The firmware acknowledgement
 remains v1 because that response contract did not change.
 
-Every frame must show `LAST REFRESH` plus `updatedAtLabel` beneath the percentage
-bar. If USB power disappears, the physical e-paper image and its absolute
+Version 3 is reserved for `usageMode: "learning"` with both percentage fields
+explicitly null. Render “Learning refill” in place of the percentage and bar.
+Continue accepting v1 and v2. The host sends v2 for all numeric meters.
+
+Every frame must show `LAST REFRESH` plus `updatedAtLabel` below the meter area. If USB power disappears, the physical e-paper image and its absolute
 timestamp remain visible without power. If power remains while host messages
 stop, the firmware leaves that frame alone. A reboot must not clear or replace
 the retained frame before a valid host message arrives. The physical firmware

@@ -111,3 +111,43 @@ test('a fresh collector process and CLI diagnostics share the durable refill mar
   assert.equal(await fs.readFile(tracker, 'utf8'), before);
   assert.equal((await poll('150')).stdout.trim(), '63');
 });
+
+test('the running collector verifies a refill hint between screen refreshes and persists it for a new process', async t => {
+  const { spawn } = await import('node:child_process');
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'desk-hint-'));
+  const configPath = path.join(directory, 'config.json');
+  const healthPath = path.join(directory, 'health.json');
+  const helper = path.join(directory, 'ack.mjs');
+  const frames = path.join(directory, 'frames.jsonl');
+  await fs.writeFile(helper, `#!/usr/bin/env node
+import { appendFileSync } from 'node:fs';
+let line = '';
+for await (const chunk of process.stdin) line += chunk;
+appendFileSync(process.env.FAKE_FRAMES, line);
+console.log(JSON.stringify({status:'displayed', generatedAt:JSON.parse(line).generatedAt}));
+`, { mode: 0o700 });
+  await fs.writeFile(configPath, JSON.stringify({ schemaVersion: 1, healthPath, codexPath: fakeCodex,
+    transport: 'direct_ch340_usb', directUsbPythonPath: helper }));
+  const env = { ...process.env, CODEX_USAGE_DISPLAY_CONFIG: configPath, FAKE_CODEX_USED_PERCENT: '100',
+    FAKE_CODEX_CREDIT_BALANCE: '25', FAKE_REFILL: '200', FAKE_FRAMES: frames };
+  const child = spawn(process.execPath, ['cli.mjs', 'serve', configPath], { cwd: repository, env, stdio: 'ignore' });
+  const exited = new Promise(resolve => child.once('exit', resolve));
+  t.after(async () => { child.kill(); await exited; await fs.rm(directory, { recursive: true, force: true }); });
+  const deadline = Date.now() + 8000;
+  for (;;) {
+    let state;
+    try { state = JSON.parse(await fs.readFile(healthPath + '.auto-credits.json', 'utf8')); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+    if (state?.full === 200) break;
+    assert.ok(Date.now() < deadline, 'notification did not trigger a verified balance read');
+    await new Promise(resolve => setTimeout(resolve, 30));
+  }
+  child.kill();
+  await exited;
+  const sent = (await fs.readFile(frames, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  assert.deepEqual(sent.map(frame => frame.usageMode), ['learning']);
+  const { stdout } = await execute(process.execPath, ['cli.mjs', 'snapshot'], {
+    cwd: repository, env: { ...env, FAKE_REFILL: '', FAKE_CODEX_CREDIT_BALANCE: '100' },
+  });
+  assert.equal(JSON.parse(stdout).remainingPercent, 50);
+});

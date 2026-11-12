@@ -117,9 +117,9 @@ test('does not invent a paid-credit percentage without a valid configured full b
     credits: { hasCredits: true, unlimited: false, balance: '2000' },
   };
   assert.deepEqual(selectUsageMeter(snapshot), {
-    usageMode: 'included',
-    usedPercent: 100,
-    remainingPercent: 0,
+    usageMode: 'learning',
+    usedPercent: null,
+    remainingPercent: null,
   });
   assert.equal(selectUsageMeter({ ...snapshot, credits: { hasCredits: true, balance: 'bogus' } }, 2000).usageMode, 'included');
 });

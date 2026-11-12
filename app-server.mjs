@@ -11,7 +11,9 @@ export class CodexAppServerClient {
     args = ['app-server', '--stdio'],
     timeoutMs = 15000,
     spawnProcess = spawn,
+    onBalanceHint = null,
   } = {}) {
+    this.onBalanceHint = onBalanceHint;
     this.command = command;
     this.args = args;
     this.timeoutMs = timeoutMs;
@@ -52,7 +54,7 @@ export class CodexAppServerClient {
     });
     await this.#request('initialize', {
       clientInfo: { name: 'codex-usage-desk-display', title: 'Codex Usage Desk Display', version: '0.1.0' },
-      capabilities: { optOutNotificationMethods: ['account/rateLimits/updated'] },
+      capabilities: this.onBalanceHint ? {} : { optOutNotificationMethods: ['account/rateLimits/updated'] },
     });
     this.#notify('initialized');
   }
@@ -60,7 +62,15 @@ export class CodexAppServerClient {
   #onLine(line) {
     let message;
     try { message = JSON.parse(line); } catch { return; }
-    if (!Object.hasOwn(message, 'id')) return;
+    if (!Object.hasOwn(message, 'id')) {
+      if (message.method === 'account/rateLimits/updated') {
+        const limits = message.params?.rateLimits;
+        if (limits && (limits.limitId == null || limits.limitId === 'codex') && limits.credits?.balance != null) {
+          this.onBalanceHint?.(limits.credits.balance);
+        }
+      }
+      return;
+    }
     const pending = this.pending.get(String(message.id));
     if (!pending) return;
     this.pending.delete(String(message.id));

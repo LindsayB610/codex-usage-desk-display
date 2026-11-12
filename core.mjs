@@ -28,6 +28,10 @@ export function selectUsageMeter(snapshot, paidCreditFullBalance = null) {
     && Number.isFinite(paidCreditFullBalance)
     && paidCreditFullBalance > 0;
 
+  if (weeklyExhausted && paidCreditFullBalance === null && creditBalance > 0 &&
+      snapshot.credits?.unlimited !== true && snapshot.credits?.hasCredits === true) {
+    return { usageMode: 'learning', usedPercent: null, remainingPercent: null };
+  }
   if (!canMeterPaidCredits) {
     return Object.freeze({
       usageMode: 'included',
@@ -118,7 +122,7 @@ export function buildDisplayMessage(response, {
   const paidUsageAvailable = window.usedPercent >= 100 && (snapshot.credits?.unlimited === true ||
     (snapshot.credits?.hasCredits === true && parseCreditBalance(snapshot.credits.balance) > 0));
   return validateDisplayMessage({
-    schemaVersion: 2,
+    schemaVersion: meter.usageMode === 'learning' ? 3 : 2,
     type: 'codex_usage',
     state: response.ordinaryUsageAllowed === false && !paidUsageAvailable ? 'limited' : 'live',
     usageMode: meter.usageMode,

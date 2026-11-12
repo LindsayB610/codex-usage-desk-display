@@ -150,7 +150,7 @@ test('tracker failures preserve weekly readings and suppress unverified paid per
   assert.equal(failedSave.trackerError, 'CREDIT_TRACKER_IO_ERROR');
 });
 
-test('unlimited readings and paused metering preserve the last finite mark', async t => {
+test('unlimited readings and seedless tracking preserve the last finite mark', async t => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'credit-mode-'));
   t.after(() => fs.rm(directory, { recursive: true, force: true }));
   const healthPath = path.join(directory, 'health.json');
@@ -166,8 +166,29 @@ test('unlimited readings and paused metering preserve the last finite mark', asy
   const unlimited = await read(10, 100, true);
   assert.equal(unlimited.usageMode, 'included');
   assert.equal(unlimited.state, 'live');
-  assert.equal((await read(5, null)).usageMode, 'included');
+  assert.equal((await read(5, null)).usageMode, 'learning');
   assert.equal(await fs.readFile(tracker, 'utf8'), before);
   assert.equal((await read(40)).remainingPercent, 20);
   assert.equal((await read(40, 400)).remainingPercent, 10);
+});
+
+test('two unconfigured installs learn independent targets and keep learning through missing data', async t => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'zero-setup-'));
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const read = (who, balance, weekly = 100) => trackedDisplayMessage({ rateLimits: {
+    primary: { windowDurationMins: 10080, usedPercent: weekly },
+    credits: { hasCredits: true, balance },
+  } }, { ...config, healthPath: path.join(dir, who + '.json') }, {}, true);
+  for (const [who, full] of [['one', 100], ['two', 800]]) {
+    const first = await read(who, 50);
+    assert.equal(first.usageMode, 'learning');
+    assert.equal(first.remainingPercent, null);
+    assert.equal((await read(who, 40)).usageMode, 'learning');
+    await read(who, null);
+    await read(who, 'invalid');
+    assert.equal((await read(who, 35)).usageMode, 'learning');
+    assert.equal((await read(who, full, 75)).usageMode, 'included');
+  }
+  assert.equal((await read('one', 40)).remainingPercent, 40);
+  assert.equal((await read('two', 40)).remainingPercent, 5);
 });

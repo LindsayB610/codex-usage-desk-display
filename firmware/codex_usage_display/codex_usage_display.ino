@@ -71,7 +71,7 @@ bool decodeSnapshot(JsonDocument &document, DisplaySnapshot &snapshot) {
   JsonObjectConst object = document.as<JsonObjectConst>();
   if (!object["schemaVersion"].is<uint8_t>()) return false;
   const uint8_t schemaVersion = object["schemaVersion"].as<uint8_t>();
-  if (schemaVersion != 1 && schemaVersion != 2) return false;
+  if (schemaVersion != 1 && schemaVersion != 2 && schemaVersion != 3) return false;
   if (object.size() != (schemaVersion == 1 ? 11 : 12)) return false;
   for (JsonPairConst pair : object) {
     if (!isExpectedKey(pair.key().c_str())) return false;
@@ -82,20 +82,25 @@ bool decodeSnapshot(JsonDocument &document, DisplaySnapshot &snapshot) {
   const char *state = object["state"].as<const char *>();
   if (strcmp(state, "live") != 0 && strcmp(state, "limited") != 0) return false;
   const char *usageMode = "included";
-  if (schemaVersion == 2) {
+  if (schemaVersion >= 2) {
     if (!object["usageMode"].is<const char *>()) return false;
     usageMode = object["usageMode"].as<const char *>();
-    if (strcmp(usageMode, "included") != 0 && strcmp(usageMode, "paid") != 0) return false;
+    if (schemaVersion == 3) {
+      if (strcmp(usageMode, "learning") != 0) return false;
+    } else if (strcmp(usageMode, "included") != 0 && strcmp(usageMode, "paid") != 0) return false;
   }
 
   constexpr uint64_t MAX_SAFE_INTEGER = 9007199254740991ULL;
   if (!isUnsignedInteger(object["generatedAt"], MAX_SAFE_INTEGER)) return false;
-  if (!isUnsignedInteger(object["usedPercent"], 100)) return false;
-  if (!isUnsignedInteger(object["remainingPercent"], 100)) return false;
-
-  const uint8_t usedPercent = object["usedPercent"].as<uint8_t>();
-  const uint8_t remainingPercent = object["remainingPercent"].as<uint8_t>();
-  if (static_cast<uint16_t>(usedPercent) + remainingPercent != 100) return false;
+  uint8_t usedPercent = 0, remainingPercent = 0;
+  if (schemaVersion == 3) {
+    if (!object["usedPercent"].isNull() || !object["remainingPercent"].isNull()) return false;
+  } else {
+    if (!isUnsignedInteger(object["usedPercent"], 100) || !isUnsignedInteger(object["remainingPercent"], 100)) return false;
+    usedPercent = object["usedPercent"].as<uint8_t>();
+    remainingPercent = object["remainingPercent"].as<uint8_t>();
+    if (static_cast<uint16_t>(usedPercent) + remainingPercent != 100) return false;
+  }
 
   const bool hasResetAt = !object["resetAt"].isNull();
   if (hasResetAt && !isUnsignedInteger(object["resetAt"], MAX_SAFE_INTEGER)) return false;
@@ -212,23 +217,28 @@ void renderSnapshot(const DisplaySnapshot &snapshot) {
   memset(ImageBW, 0xFF, ALLSCREEN_BYTES);
 
   fillRectangle(0, 0, 249, 17, WHITE);
+  const bool learning = strcmp(snapshot.usageMode, "learning") == 0;
   const bool paid = strcmp(snapshot.usageMode, "paid") == 0;
   const char *header = strcmp(snapshot.state, "limited") == 0
     ? "LIMITED"
-    : (paid ? "CODEX / CREDITS" : "CODEX / WEEK");
+    : (paid || learning ? "CODEX / CREDITS" : "CODEX / WEEK");
   EPD_ShowString(8, 3, header, WHITE, 12);
 
-  char remaining[6];
-  snprintf(remaining, sizeof(remaining), "%u%%", snapshot.remainingPercent);
-  drawUsageText(remaining, 29);
-  EPD_ShowString(9, 74, paid ? "CREDITS LEFT" : "REMAINING", BLACK, 12);
+  if (learning) {
+    EPD_ShowString(9, 49, "Learning refill", BLACK, 12);
+  } else {
+    char remaining[6];
+    snprintf(remaining, sizeof(remaining), "%u%%", snapshot.remainingPercent);
+    drawUsageText(remaining, 29);
+    EPD_ShowString(9, 74, paid ? "CREDITS LEFT" : "REMAINING", BLACK, 12);
 
-  EPD_DrawRectangle(9, 87, 108, 96, WHITE);
-  EPD_DrawRectangle(10, 88, 107, 95, WHITE);
-  const uint16_t barPixels = static_cast<uint16_t>((94UL * snapshot.remainingPercent + 50) / 100);
-  if (barPixels > 0) fillRectangle(12, 90, 11 + barPixels, 93, WHITE);
-  EPD_DrawLine(59, 88, 59, 95, WHITE);
-  EPD_DrawLine(83, 88, 83, 95, WHITE);
+    EPD_DrawRectangle(9, 87, 108, 96, WHITE);
+    EPD_DrawRectangle(10, 88, 107, 95, WHITE);
+    const uint16_t barPixels = static_cast<uint16_t>((94UL * snapshot.remainingPercent + 50) / 100);
+    if (barPixels > 0) fillRectangle(12, 90, 11 + barPixels, 93, WHITE);
+    EPD_DrawLine(59, 88, 59, 95, WHITE);
+    EPD_DrawLine(83, 88, 83, 95, WHITE);
+  }
 
   char refreshed[20];
   copyDisplayAscii(refreshed, sizeof(refreshed), snapshot.updatedAtLabel);

@@ -45,3 +45,11 @@ test('renders a limited account state without dropping the last values', () => {
 test('renders an unavailable reset count as an em dash', () => {
   assert.match(renderDisplaySvg({ ...message, resetCredits: null }), />—</);
 });
+
+test('learning shows a label without representing an unknown balance as a percentage or bar', () => {
+  const svg = renderDisplaySvg({ ...message, schemaVersion: 3, usageMode: 'learning',
+    usedPercent: null, remainingPercent: null });
+  assert.match(svg, />Learning refill</);
+  assert.match(svg, />LAST REFRESH 12:42 PM</);
+  assert.doesNotMatch(svg, /%|CREDITS LEFT|width="99"/);
+});

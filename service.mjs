@@ -73,9 +73,10 @@ async function readCreditTracker(statePath) {
   let state;
   try { state = JSON.parse(raw); }
   catch { throw serviceError('INVALID_CREDIT_TRACKER'); }
-  if (!Number.isFinite(state?.seed) || state.seed <= 0 ||
-      !Number.isFinite(state.full) || state.full <= 0 ||
-      !Number.isFinite(state.balance) || state.balance < 0 || state.balance > state.full) {
+  const automatic = state?.seed === null;
+  if ((!automatic && (!Number.isFinite(state?.seed) || state.seed <= 0)) ||
+      (!(automatic && state.full === null) && (!Number.isFinite(state.full) || state.full <= 0)) ||
+      !Number.isFinite(state.balance) || state.balance < 0 || (state.full !== null && state.balance > state.full)) {
     throw serviceError('INVALID_CREDIT_TRACKER');
   }
   return state;
@@ -97,34 +98,42 @@ async function waitForDelay(milliseconds, signal) {
 // Only the service writes this file. Snapshot and preview use the same calculation read-only.
 export async function trackedDisplayMessage(response, config, options = {}, persist = false, onTrackerError = () => {}) {
   const message = buildDisplayMessage(response, { ...config, ...options });
-  const seed = config.paidCreditFullBalance;
+  const seed = config.paidCreditFullBalance ?? null;
   const credits = selectCodexSnapshot(response).credits;
   const balance = parseCreditBalance(credits?.balance);
-  if (!seed || balance === null || credits?.unlimited === true) return message;
+  if (balance === null || credits?.unlimited === true) return message;
 
-  const statePath = config.healthPath + '.credits.json';
+  const statePath = config.healthPath + (seed == null ? '.auto-credits.json' : '.credits.json');
   let full;
   try {
     const previous = await readCreditTracker(statePath);
     const tracked = previous?.seed === seed;
-    full = tracked ? previous.full : Math.max(seed, balance);
-    if (tracked && balance > previous.balance) full = balance;
+    if (tracked) {
+      full = balance > previous.balance ? balance : previous.full;
+    } else {
+      full = seed === null ? null : Math.max(seed, balance);
+    }
     if (persist && (!tracked || balance !== previous.balance)) {
       await writePrivateJson(statePath, { seed, balance, full });
     }
   } catch (error) {
     onTrackerError(error.code === 'INVALID_CREDIT_TRACKER' ? error.code : 'CREDIT_TRACKER_IO_ERROR');
-    full = null;
+    // A storage error is different from waiting to observe a refill.
+    return buildDisplayMessage(response, { ...config, ...options, paidCreditFullBalance: 0 });
   }
   return buildDisplayMessage(response, { ...config, ...options, paidCreditFullBalance: full });
 }
 
-export async function pollOnce({ client, transport, config, nowEpochSeconds = Math.floor(Date.now() / 1000) }) {
+async function collectReading({ client, config, nowEpochSeconds }) {
   const response = await client.readRateLimits();
   let trackerError = null;
   const message = await trackedDisplayMessage(response, config, { nowEpochSeconds }, true, code => { trackerError = code; });
-  const delivery = await transport.send(message);
-  return { message, delivery, trackerError };
+  return { message, trackerError, balance: parseCreditBalance(selectCodexSnapshot(response).credits?.balance) };
+}
+
+export async function pollOnce({ client, transport, config, nowEpochSeconds = Math.floor(Date.now() / 1000) }) {
+  const { message, trackerError } = await collectReading({ client, config, nowEpochSeconds });
+  return { message, trackerError, delivery: await transport.send(message) };
 }
 
 export function nextDeliveryTimestamps(previous, generatedAt, status) {
@@ -137,7 +146,24 @@ export function nextDeliveryTimestamps(previous, generatedAt, status) {
 
 export async function runService(config, { signal = null } = {}) {
   const value = validateConfig(config);
-  let client = new CodexAppServerClient({ command: value.codexPath });
+  let lastBalance = null;
+  let lastHint = null;
+  let hintPending = false;
+  let wake = null;
+  const clientOptions = {
+    command: value.codexPath,
+    onBalanceHint(raw) {
+      const hint = parseCreditBalance(raw);
+      if (hint !== null && hint !== lastBalance && hint !== lastHint) {
+        lastHint = hint;
+        hintPending = true;
+        wake?.abort();
+      }
+    },
+  };
+  let client = new CodexAppServerClient(clientOptions);
+  let nextDisplayAt = 0;
+  const sampleIntervalMs = Math.min(60, value.pollIntervalSeconds) * 1000;
   const transport = value.transport === 'direct_ch340_usb'
     ? new DirectUsbTransport({ pythonPath: value.directUsbPythonPath })
     : new SerialTransport({
@@ -148,31 +174,42 @@ export async function runService(config, { signal = null } = {}) {
   let stopped = signal?.aborted ?? false;
   let lastSentSnapshotAt = null;
   let lastGoodSnapshotAt = null;
-  const stop = () => { stopped = true; };
+  const stop = () => { stopped = true; wake?.abort(); };
   signal?.addEventListener('abort', stop, { once: true });
   try {
     while (!stopped) {
       const attemptedAt = Math.floor(Date.now() / 1000);
       try {
-        const result = await pollOnce({ client, transport, config: value, nowEpochSeconds: attemptedAt });
-        ({ lastSentSnapshotAt, lastGoodSnapshotAt } = nextDeliveryTimestamps(
-          { lastSentSnapshotAt, lastGoodSnapshotAt },
-          result.message.generatedAt,
-          result.delivery.status,
-        ));
-        await writePrivateJson(value.healthPath, {
-          schemaVersion: 1,
-          attemptedAt,
-          status: result.delivery.status,
-          devicePath: result.delivery.devicePath ?? null,
-          lastSentSnapshotAt,
-          lastGoodSnapshotAt,
-          error: null,
-          trackerError: result.trackerError,
-        });
+        hintPending = false;
+        const result = await collectReading({ client, config: value, nowEpochSeconds: attemptedAt });
+        if (lastBalance !== result.balance) lastHint = null;
+        lastBalance = result.balance;
+        if (Date.now() >= nextDisplayAt) {
+          const delivery = await transport.send(result.message);
+          ({ lastSentSnapshotAt, lastGoodSnapshotAt } = nextDeliveryTimestamps(
+            { lastSentSnapshotAt, lastGoodSnapshotAt },
+            result.message.generatedAt,
+            delivery.status,
+          ));
+          await writePrivateJson(value.healthPath, {
+            schemaVersion: 1,
+            attemptedAt,
+            status: delivery.status,
+            devicePath: delivery.devicePath ?? null,
+            lastSentSnapshotAt,
+            lastGoodSnapshotAt,
+            error: null,
+            trackerError: result.trackerError,
+          });
+          nextDisplayAt = Date.now() + value.pollIntervalSeconds * 1000;
+        } else if (result.trackerError) {
+          const health = JSON.parse(await fs.readFile(value.healthPath, 'utf8'));
+          await writePrivateJson(value.healthPath, { ...health, trackerError: result.trackerError });
+        }
       } catch (error) {
         await client.close().catch(() => {});
-        client = new CodexAppServerClient({ command: value.codexPath });
+        client = new CodexAppServerClient(clientOptions);
+        nextDisplayAt = 0;
         await writePrivateJson(value.healthPath, {
           schemaVersion: 1,
           attemptedAt,
@@ -184,7 +221,12 @@ export async function runService(config, { signal = null } = {}) {
         });
       }
       if (stopped) break;
-      await waitForDelay(value.pollIntervalSeconds * 1000, signal);
+      wake = new AbortController();
+      const delay = Math.min(sampleIntervalMs, nextDisplayAt ? Math.max(0, nextDisplayAt - Date.now()) : sampleIntervalMs);
+      if (!hintPending) await waitForDelay(delay, wake.signal);
+      wake = null;
+      // Coalesce bursts and bound read frequency, even if a read itself emits a hint.
+      if (hintPending && !stopped) await waitForDelay(1000, signal);
     }
   } finally {
     await Promise.allSettled([client.close(), transport.close()]);

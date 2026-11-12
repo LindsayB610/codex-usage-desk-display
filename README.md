@@ -63,14 +63,15 @@ Authentication stays on the Mac. The host explicitly selects the reported
 `10080`-minute weekly window, whether Codex returns it as `primary` or
 `secondary`. The message sent to the ESP32 contains only display values and
 timestamps; it never contains an account ID, token, API key, or reset-credit
-ID. The weekly meter remains active until the source reports 100% used. If a
-paid-credit full balance is configured, the meter then switches to the current
-paid balance as a percentage of that local full mark. The raw balance and its
+ID. The weekly meter remains active until the source reports 100% used. The host learns a
+full mark from an observed increase in the credit balance. When paid credits
+take over, the screen shows “Learning refill” until a mark is available, then
+shows the remaining percentage. The raw balance and its
 dollar value never cross the USB boundary. Paid mode remains live while a
 positive balance is available; `LIMITED` appears after both included and paid
 usage are exhausted.
 
-The service polls every five minutes. Routine updates use a low-flicker
+The service checks the balance at least once per minute while running and refreshes the panel every five minutes by default. Routine updates use a low-flicker
 partial waveform, with a full cleanup refresh after 24 partials or after the
 board restarts.
 
@@ -153,31 +154,26 @@ Then install the Python dependencies, private config, and per-user launch agent:
 node scripts/install-macos.mjs
 ```
 
-Paid-credit metering is optional. OpenAI's local rate-limit response reports
-the current credit balance but not the starting balance for a purchase, so the
-service needs a local denominator. Immediately after funding or reloading your
-credits, set `paidCreditFullBalance` in the generated private `config.json` to
-that full credit balance and restart the launch agent. You can also provide it
-during installation:
+Paid-credit metering learns automatically on each installation. The first valid
+balance is a baseline. A later increase sets the full mark to the total observed
+after the increase, even while the weekly allowance is active. Until then, an
+account using paid credits shows **Learning refill**. The baseline and learned
+mark survive restarts.
 
-```sh
-CODEX_PAID_CREDIT_FULL_BALANCE=1234 node scripts/install-macos.mjs
-```
+Codex reports the current balance. It does not supply the configured target in
+this feed. The collector also listens for balance-bearing rate-limit updates
+and rechecks the account when one arrives. Notifications can be silent during
+active spending. A refill that occurs between reads can be partly or fully
+hidden by spending, and any observed increase counts, including manual top-ups.
 
-`1234` is only an example; use the balance that represents 100% for your
-account. A later `--replace` install preserves the existing value unless the
-environment variable is explicitly supplied. Set the variable to `none` to
-pause metering. Restoring the same seed resumes its saved mark. To start over
-(for example after switching accounts), stop the service and move the private
-`health.json.credits.json` file next to the config to a backup before restarting.
-A changed seed also starts a new mark on the next valid reading.
-The configured mark seeds the meter. On subsequent polls, any observed balance
-increase establishes the new full mark, including while weekly usage is active.
-The Mac remembers it across restarts. Purchases and other balance increases
-look identical in this feed. Spending between polls can lower the observed mark
-or hide a small refill. If the tracker cannot be read or saved, health records
-a tracker error and the display continues showing the weekly allowance. An
-unlimited credit balance also uses the weekly screen.
+Existing installations keep their configured seed and learned mark. Optionally
+set `CODEX_PAID_CREDIT_FULL_BALANCE` when installing if the full amount is
+known. On a replacement install, `none` selects automatic learning. The
+automatic and manually seeded histories are kept separately. State belongs
+to the local installation. If you switch Codex accounts on the same macOS user,
+stop the service, move its private `health.json.auto-credits.json` and
+`health.json.credits.json` files aside if present, clear the old manual seed,
+and restart to learn the new account.
 
 The installer writes private runtime state to
 `~/Library/Application Support/Codex Usage Desk Display/` and installs
@@ -203,11 +199,10 @@ acknowledgement; `lastSentSnapshotAt` also records unacknowledged serial writes.
 
 ### Upgrading an existing display
 
-Protocol v2 adds the weekly-versus-paid meter mode. Flash the new firmware
-before restarting the updated Mac service. The new firmware accepts both the
-old v1 weekly message and the new v2 message, so this order preserves the last
-good screen throughout the upgrade. Old firmware intentionally rejects the new
-message rather than guessing what its percentage means.
+Flash the updated firmware to show “Learning refill.” It accepts v1 weekly frames,
+v2 weekly and paid frames, and the v3 learning frame. The host still sends v2 for
+known percentages, so an already calibrated v2 display can continue showing them.
+Older firmware rejects the learning frame and retains its last valid screen.
 
 ## Print the enclosure
 
