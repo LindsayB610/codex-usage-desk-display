@@ -9,7 +9,7 @@ function clampPercent(value) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-function parseCreditBalance(value) {
+export function parseCreditBalance(value) {
   if (typeof value !== 'number' && typeof value !== 'string') return null;
   if (typeof value === 'string' && !/^-?\d+(?:\.\d+)?$/.test(value)) return null;
   const balance = Number(value);
@@ -23,6 +23,7 @@ export function selectUsageMeter(snapshot, paidCreditFullBalance = null) {
   const weeklyExhausted = weeklyWindow.usedPercent >= 100;
   const creditBalance = parseCreditBalance(snapshot.credits?.balance);
   const canMeterPaidCredits = weeklyExhausted
+    && snapshot.credits?.unlimited !== true
     && creditBalance !== null
     && Number.isFinite(paidCreditFullBalance)
     && paidCreditFullBalance > 0;
@@ -114,9 +115,8 @@ export function buildDisplayMessage(response, {
   const resetCredits = Number.isInteger(response.rateLimitResetCredits?.availableCount)
     ? Math.max(0, response.rateLimitResetCredits.availableCount)
     : null;
-  const paidUsageAvailable = meter.usageMode === 'paid'
-    && meter.remainingPercent > 0
-    && snapshot.credits?.hasCredits === true;
+  const paidUsageAvailable = window.usedPercent >= 100 && (snapshot.credits?.unlimited === true ||
+    (snapshot.credits?.hasCredits === true && parseCreditBalance(snapshot.credits.balance) > 0));
   return validateDisplayMessage({
     schemaVersion: 2,
     type: 'codex_usage',

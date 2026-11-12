@@ -30,8 +30,12 @@ OpenAI reports the current purchased-credit balance but does not report the
 starting balance for a purchase as part of this response. The Mac therefore
 stores `paidCreditFullBalance` as local configuration. Once weekly remaining is
 zero, paid-credit remaining percentage is the current balance divided by that
-configured full balance, rounded up so a positive balance never appears as
-zero and capped at 100 after an automatic reload. A temporarily negative
+observed full balance, rounded up so a positive balance never appears as
+zero. The configured capacity seeds the tracker. The service saves the first
+observed higher balance after a rise as the new full mark, and persists its
+last observation locally across restarts. Disabling metering pauses the tracker.
+An invalid or unwritable tracker or an unlimited credit reading leaves the
+weekly screen active. A temporarily negative
 balance is displayed as zero until the next reload. A missing or malformed
 balance or capacity fails closed to the weekly zero state. The ESP32 receives
 only the resulting mode and percentage, never the monetary value or raw credit

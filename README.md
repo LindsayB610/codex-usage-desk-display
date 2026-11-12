@@ -167,8 +167,17 @@ CODEX_PAID_CREDIT_FULL_BALANCE=1234 node scripts/install-macos.mjs
 `1234` is only an example; use the balance that represents 100% for your
 account. A later `--replace` install preserves the existing value unless the
 environment variable is explicitly supplied. Set the variable to `none` to
-clear it. Automatic reloads refill the bar, and a balance above the configured
-full mark is capped at 100%.
+pause metering. Restoring the same seed resumes its saved mark. To start over
+(for example after switching accounts), stop the service and move the private
+`health.json.credits.json` file next to the config to a backup before restarting.
+A changed seed also starts a new mark on the next valid reading.
+The configured mark seeds the meter. On subsequent polls, any observed balance
+increase establishes the new full mark, including while weekly usage is active.
+The Mac remembers it across restarts. Purchases and other balance increases
+look identical in this feed. Spending between polls can lower the observed mark
+or hide a small refill. If the tracker cannot be read or saved, health records
+a tracker error and the display continues showing the weekly allowance. An
+unlimited credit balance also uses the weekly screen.
 
 The installer writes private runtime state to
 `~/Library/Application Support/Codex Usage Desk Display/` and installs

@@ -1,7 +1,8 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { CodexAppServerClient } from './app-server.mjs';
-import { buildDisplayMessage } from './core.mjs';
+import { buildDisplayMessage, parseCreditBalance, selectCodexSnapshot } from './core.mjs';
 import { DirectUsbTransport } from './direct-usb.mjs';
 import { SerialTransport } from './serial.mjs';
 
@@ -50,11 +51,34 @@ export async function readConfig(configPath) {
   return validateConfig(value);
 }
 
-async function writeHealth(healthPath, value) {
-  await fs.mkdir(path.dirname(healthPath), { recursive: true, mode: 0o700 });
-  const temp = `${healthPath}.tmp-${process.pid}`;
-  await fs.writeFile(temp, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
-  await fs.rename(temp, healthPath);
+async function writePrivateJson(filePath, value) {
+  await fs.mkdir(path.dirname(filePath), { recursive: true, mode: 0o700 });
+  const temp = filePath + '.tmp-' + randomUUID();
+  try {
+    await fs.writeFile(temp, JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
+    await fs.rename(temp, filePath);
+  } finally {
+    await fs.rm(temp, { force: true });
+  }
+}
+
+async function readCreditTracker(statePath) {
+  let raw;
+  try {
+    raw = await fs.readFile(statePath, 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
+  let state;
+  try { state = JSON.parse(raw); }
+  catch { throw serviceError('INVALID_CREDIT_TRACKER'); }
+  if (!Number.isFinite(state?.seed) || state.seed <= 0 ||
+      !Number.isFinite(state.full) || state.full <= 0 ||
+      !Number.isFinite(state.balance) || state.balance < 0 || state.balance > state.full) {
+    throw serviceError('INVALID_CREDIT_TRACKER');
+  }
+  return state;
 }
 
 async function waitForDelay(milliseconds, signal) {
@@ -70,15 +94,37 @@ async function waitForDelay(milliseconds, signal) {
   });
 }
 
+// Only the service writes this file. Snapshot and preview use the same calculation read-only.
+export async function trackedDisplayMessage(response, config, options = {}, persist = false, onTrackerError = () => {}) {
+  const message = buildDisplayMessage(response, { ...config, ...options });
+  const seed = config.paidCreditFullBalance;
+  const credits = selectCodexSnapshot(response).credits;
+  const balance = parseCreditBalance(credits?.balance);
+  if (!seed || balance === null || credits?.unlimited === true) return message;
+
+  const statePath = config.healthPath + '.credits.json';
+  let full;
+  try {
+    const previous = await readCreditTracker(statePath);
+    const tracked = previous?.seed === seed;
+    full = tracked ? previous.full : Math.max(seed, balance);
+    if (tracked && balance > previous.balance) full = balance;
+    if (persist && (!tracked || balance !== previous.balance)) {
+      await writePrivateJson(statePath, { seed, balance, full });
+    }
+  } catch (error) {
+    onTrackerError(error.code === 'INVALID_CREDIT_TRACKER' ? error.code : 'CREDIT_TRACKER_IO_ERROR');
+    full = null;
+  }
+  return buildDisplayMessage(response, { ...config, ...options, paidCreditFullBalance: full });
+}
+
 export async function pollOnce({ client, transport, config, nowEpochSeconds = Math.floor(Date.now() / 1000) }) {
   const response = await client.readRateLimits();
-  const message = buildDisplayMessage(response, {
-    nowEpochSeconds,
-    timeZone: config.timeZone,
-    paidCreditFullBalance: config.paidCreditFullBalance,
-  });
+  let trackerError = null;
+  const message = await trackedDisplayMessage(response, config, { nowEpochSeconds }, true, code => { trackerError = code; });
   const delivery = await transport.send(message);
-  return { message, delivery };
+  return { message, delivery, trackerError };
 }
 
 export function nextDeliveryTimestamps(previous, generatedAt, status) {
@@ -114,7 +160,7 @@ export async function runService(config, { signal = null } = {}) {
           result.message.generatedAt,
           result.delivery.status,
         ));
-        await writeHealth(value.healthPath, {
+        await writePrivateJson(value.healthPath, {
           schemaVersion: 1,
           attemptedAt,
           status: result.delivery.status,
@@ -122,11 +168,12 @@ export async function runService(config, { signal = null } = {}) {
           lastSentSnapshotAt,
           lastGoodSnapshotAt,
           error: null,
+          trackerError: result.trackerError,
         });
       } catch (error) {
         await client.close().catch(() => {});
         client = new CodexAppServerClient({ command: value.codexPath });
-        await writeHealth(value.healthPath, {
+        await writePrivateJson(value.healthPath, {
           schemaVersion: 1,
           attemptedAt,
           status: 'error',

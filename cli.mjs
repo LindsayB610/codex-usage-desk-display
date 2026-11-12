@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { CodexAppServerClient } from './app-server.mjs';
 import { buildDisplayMessage } from './core.mjs';
 import { renderDisplaySvg } from './render.mjs';
-import { readConfig, runService } from './service.mjs';
+import { readConfig, runService, trackedDisplayMessage } from './service.mjs';
 
 const DEFAULT_CODEX = '/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex';
 
@@ -26,10 +26,8 @@ async function snapshot() {
   const codexPath = config?.codexPath ?? process.env.CODEX_BIN ?? DEFAULT_CODEX;
   const client = new CodexAppServerClient({ command: codexPath });
   try {
-    return buildDisplayMessage(await client.readRateLimits(), {
-      timeZone: config?.timeZone,
-      paidCreditFullBalance: config?.paidCreditFullBalance,
-    });
+    const response = await client.readRateLimits();
+    return config ? await trackedDisplayMessage(response, config) : buildDisplayMessage(response);
   }
   finally { await client.close(); }
 }
