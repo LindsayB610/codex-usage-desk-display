@@ -4,15 +4,18 @@ A tiny, glanceable Codex allowance display built with an Elecrow 2.13-inch
 ESP32 e-paper CrowPanel and a local Mac service. It shows:
 
 - percentage remaining in the seven-day Codex window
-- paid-credit percentage after the included weekly allowance reaches zero
+- a paid-credit meter that learns what counts as full for your installation
 - countdown and local time for the next automatic reset
 - available full-reset credits when Codex reports them
 - the local time of the last successful refresh
 
 ![Black-and-white Codex usage screen preview](docs/display-preview.svg)
 
-When paid credits take over, the same meter changes its header and label so the
-percentage cannot be mistaken for the weekly allowance:
+When the weekly allowance runs out, the display switches to paid credits. On a
+fresh install, **Learning refill** means the Mac is waiting to see the balance
+rise. There’s nothing to enter. For example, if it sees a refill bring the
+balance to 200 credits, a later balance of 150 shows as **75% CREDITS LEFT**.
+The Mac remembers that full mark across restarts.
 
 ![Black-and-white paid-credit screen preview](docs/paid-credit-preview.svg)
 
@@ -43,6 +46,10 @@ The display firmware and host service have been physically tested on:
 - macOS with Codex signed into the local Codex app or CLI
 - the board's CH340K USB bridge, accessed through libusb
 - Node.js 22 or newer and Python 3
+
+On the CrowPanel above, we verified that the **Learning refill** screen shows
+the label clearly with no percentage or bar. Calibration lives on the Mac, so
+you can flash the display without resetting its learned full mark.
 
 The V5 enclosure keeps the V4 frame and 60-degree stand, then replaces the
 rear cover with a one-layer preload correction, as described in the build
@@ -199,10 +206,13 @@ acknowledgement; `lastSentSnapshotAt` also records unacknowledged serial writes.
 
 ### Upgrading an existing display
 
-Flash the updated firmware to show “Learning refill.” It accepts v1 weekly frames,
-v2 weekly and paid frames, and the v3 learning frame. The host still sends v2 for
-known percentages, so an already calibrated v2 display can continue showing them.
-Older firmware rejects the learning frame and retains its last valid screen.
+If your display already shows paid-credit percentages, updating the Mac service
+preserves its calibration. To show **Learning refill** on an uncalibrated
+display, [flash the updated firmware](#prepare-and-flash-the-firmware), then
+[update the Mac service](#install-the-five-minute-background-service). The new
+firmware accepts older host messages during the upgrade. A board still on v2
+firmware can show known percentages, but keeps its last screen when the Mac
+sends a learning frame.
 
 ## Print the enclosure
 
